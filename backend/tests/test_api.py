@@ -377,8 +377,6 @@ def test_onboarding_runs_agents_and_returns_top3(client: TestClient) -> None:
             "age": 29,
             "life_phase": "new-role",
             "figure_analysis": "structured shoulders",
-            "mood": "focus",
-            "occasion": "work",
         },
     )
     assert response.status_code == 200

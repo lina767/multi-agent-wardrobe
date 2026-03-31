@@ -24,8 +24,8 @@ describe("App", () => {
         <App />
       </MemoryRouter>,
     );
-    expect(await screen.findByText("Multi-Agent Wardrobe Dashboard")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /1\. Profile/ })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /4\. Daily Outfit Intelligence/ })).toBeTruthy();
+    expect(await screen.findByText("Wardrobe Studio")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /1\. Identity/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /4\. Daily Edit/ })).toBeTruthy();
   });
 });

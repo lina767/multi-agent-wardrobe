@@ -33,8 +33,8 @@ describe("RootApp routing", () => {
         <RootApp />
       </MemoryRouter>,
     );
-    expect(screen.getByText("Wardrobe Intelligence")).toBeTruthy();
-    expect(screen.getByText(/Login with magic link/)).toBeTruthy();
+    expect(screen.getByText(/Wardrobe Intelligence, with Koselig Warmth/)).toBeTruthy();
+    expect(screen.getByText(/Continue with magic link/)).toBeTruthy();
   });
 
   it("redirects guests from /dashboard to /login", () => {
@@ -51,7 +51,7 @@ describe("RootApp routing", () => {
         <RootApp />
       </MemoryRouter>,
     );
-    expect(screen.getByText("Login")).toBeTruthy();
+    expect(screen.getByText("Welcome back")).toBeTruthy();
   });
 
   it("renders protected dashboard for authenticated user", () => {

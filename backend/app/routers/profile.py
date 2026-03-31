@@ -276,11 +276,6 @@ async def run_onboarding(
     weather_data: dict = {}
     if body.location:
         weather_data = await WeatherService().fetch_current(body.location)
-    try:
-        mood = MoodEnergy(body.mood.lower())
-    except ValueError:
-        mood = MoodEnergy.FOCUS
-
     req = RecommendationRequest(
         context=ContextInput(
             temperature_c=weather_data.get("temperature_c"),
@@ -290,7 +285,7 @@ async def run_onboarding(
             wind_speed_kph=weather_data.get("wind_speed_kph"),
             forecast_summary=weather_data.get("forecast_summary"),
             event_type=EventType.OTHER,
-            mood=mood,
+            mood=MoodEnergy.FOCUS,
             notes="onboarding_bootstrap",
         ),
         max_candidates_to_rank=60,
