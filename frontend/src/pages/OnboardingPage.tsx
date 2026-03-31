@@ -45,7 +45,7 @@ export function OnboardingPage() {
       <h2>Style Onboarding</h2>
       <p>Set your baseline once. Mood and occasion stay in Daily Outfit Intelligence because they change day to day.</p>
       {error ? <p className="error">{error}</p> : null}
-      <form className="grid" onSubmit={handleSubmit}>
+      <form className="grid" data-dashboard-save="true" onSubmit={handleSubmit}>
         <label className="field">
           Name
           <input value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} />

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { NavLink, Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { api } from "./api";
 import { DailyOutfitPage } from "./pages/DailyOutfitPage";
@@ -10,10 +10,12 @@ import { WardrobePage } from "./pages/WardrobePage";
 
 export function App() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [hasProfile, setHasProfile] = useState(false);
   const [hasWardrobe, setHasWardrobe] = useState(false);
   const [hasDailySuggestion, setHasDailySuggestion] = useState(false);
   const [guideLoading, setGuideLoading] = useState(true);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -63,6 +65,20 @@ export function App() {
     navigate("/dashboard/daily");
   }
 
+  function handleDashboardSave() {
+    const saveForm = document.querySelector<HTMLFormElement>('form[data-dashboard-save="true"]');
+    if (!saveForm) {
+      setSaveMessage("Nothing to save on this page.");
+      return;
+    }
+    saveForm.requestSubmit();
+    setSaveMessage("Saving current section...");
+  }
+
+  useEffect(() => {
+    setSaveMessage(null);
+  }, [location.pathname]);
+
   return (
     <main className="layout">
       <header className="hero heroDashboard">
@@ -87,23 +103,29 @@ export function App() {
           Continue setup
         </button>
       </section>
-      <nav className="dashNav" aria-label="Dashboard navigation">
-        <NavLink to="/dashboard/profile" className="dashLink">
-          1. Identity
-        </NavLink>
-        <NavLink to="/dashboard/wardrobe" className="dashLink">
-          2. Wardrobe
-        </NavLink>
-        <NavLink to="/dashboard/onboarding" className="dashLink">
-          3. Style Onboarding
-        </NavLink>
-        <NavLink to="/dashboard/daily" className="dashLink">
-          4. Daily Edit
-        </NavLink>
-        <NavLink to="/dashboard/settings" className="dashLink">
-          5. Studio Settings
-        </NavLink>
-      </nav>
+      <div className="dashToolbar">
+        <nav className="dashNav" aria-label="Dashboard navigation">
+          <NavLink to="/dashboard/profile" className="dashLink">
+            1. Identity
+          </NavLink>
+          <NavLink to="/dashboard/wardrobe" className="dashLink">
+            2. Wardrobe
+          </NavLink>
+          <NavLink to="/dashboard/onboarding" className="dashLink">
+            3. Style Onboarding
+          </NavLink>
+          <NavLink to="/dashboard/daily" className="dashLink">
+            4. Daily Edit
+          </NavLink>
+          <NavLink to="/dashboard/settings" className="dashLink">
+            5. Studio Settings
+          </NavLink>
+        </nav>
+        <button type="button" className="dashSaveButton" onClick={handleDashboardSave}>
+          Save changes
+        </button>
+      </div>
+      {saveMessage ? <p className="metaNote">{saveMessage}</p> : null}
       <Routes>
         <Route path="profile" element={<ProfilePage />} />
         <Route path="wardrobe" element={<WardrobePage />} />

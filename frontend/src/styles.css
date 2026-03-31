@@ -293,6 +293,15 @@ h3 {
   margin-top: -0.15rem;
 }
 
+.dashToolbar {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.dashSaveButton {
+  width: 100%;
+}
+
 .dashLink {
   flex: 0 0 auto;
   border: 1px solid var(--line);
@@ -534,6 +543,10 @@ button:hover {
 .wardrobePrimaryButton {
   min-height: 44px;
   width: 100%;
+}
+
+.wardrobeAddFromPhotoButton {
+  margin-bottom: 0.7rem;
 }
 
 .wardrobeControls {
@@ -805,6 +818,16 @@ button:hover {
 
   .layout {
     padding: 1rem;
+  }
+
+  .dashToolbar {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .dashSaveButton {
+    width: auto;
+    white-space: nowrap;
   }
 }
 

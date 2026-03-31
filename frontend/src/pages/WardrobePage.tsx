@@ -39,6 +39,7 @@ export function WardrobePage() {
   const [loading, setLoading] = useState(false);
   const [busyItemIds, setBusyItemIds] = useState<Set<number>>(new Set());
   const [uploadingBulk, setUploadingBulk] = useState(false);
+  const [uploadingSinglePhoto, setUploadingSinglePhoto] = useState(false);
   const [bulkResult, setBulkResult] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     category: "" as WardrobeCategory | "",
@@ -165,6 +166,29 @@ export function WardrobePage() {
     }
   }
 
+  async function handleAddFromPhoto(file: File | null) {
+    if (!file) {
+      return;
+    }
+    setUploadingSinglePhoto(true);
+    setError(null);
+    setBulkResult(null);
+    try {
+      const response = await api.bulkUploadAndAnalyze([file], {
+        category: form.category,
+        formality: form.formality,
+        color_family: form.color_families[0],
+      });
+      const uploaded = response.items?.[0];
+      setBulkResult(uploaded ? `Added from photo: ${uploaded.name}` : "Added 1 item from photo.");
+      await refreshItems();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Photo upload failed.");
+    } finally {
+      setUploadingSinglePhoto(false);
+    }
+  }
+
   return (
     <section className="card pageSection wardrobePage">
       <header className="wardrobeHeader">
@@ -184,6 +208,11 @@ export function WardrobePage() {
         <div className="sectionHead">
           <p className="eyebrow">Add Piece</p>
         </div>
+        <p className="metaNote">Quick add: upload one clothing photo and we create the piece automatically.</p>
+        <label className="uploadButton wardrobeAddFromPhotoButton">
+          {uploadingSinglePhoto ? "Adding from photo..." : "Add piece from photo"}
+          <input type="file" accept="image/*" onChange={(event) => void handleAddFromPhoto(event.target.files?.[0] ?? null)} />
+        </label>
         <form className="grid wardrobeFormGrid" onSubmit={handleCreateItem}>
           <label className="field">
             Name

@@ -73,7 +73,7 @@ export function SettingsPage() {
         <div className="sectionHead">
           <p className="eyebrow">Email</p>
         </div>
-        <form className="grid" onSubmit={handleSubmit}>
+        <form className="grid" data-dashboard-save="true" onSubmit={handleSubmit}>
           <label className="field">
             Email address
             <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />

@@ -92,7 +92,7 @@ export function ProfilePage() {
       </div>
       <h2>Identity Profile</h2>
       {error ? <p className="error">{error}</p> : null}
-      <form className="grid" onSubmit={handleSubmit}>
+      <form className="grid" data-dashboard-save="true" onSubmit={handleSubmit}>
         <label className="field">
           Name
           <input value={name} onChange={(event) => setName(event.target.value)} />
@@ -125,7 +125,7 @@ export function ProfilePage() {
       </form>
       <div className="row">
         <label className="uploadButton">
-          Upload portrait
+          Upload selfie
           <input type="file" accept="image/*" onChange={(event) => void handleSelfieUpload(event.target.files?.[0] ?? null)} />
         </label>
         <label className="uploadButton">
