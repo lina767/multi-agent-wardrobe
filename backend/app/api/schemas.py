@@ -66,6 +66,11 @@ class WardrobeItemRead(WardrobeItemBase):
 
 class ContextInput(BaseModel):
     temperature_c: float | None = Field(None, description="Outdoor temperature Celsius")
+    feels_like_c: float | None = Field(None, description="Perceived outdoor temperature Celsius")
+    rain_probability: float | None = Field(None, ge=0.0, le=1.0, description="Rain probability in range 0..1")
+    uv_index: float | None = Field(None, ge=0.0, description="UV index")
+    wind_speed_kph: float | None = Field(None, ge=0.0, description="Wind speed in km/h")
+    forecast_summary: str | None = Field(None, description="Short upcoming forecast summary")
     event_type: EventType = EventType.OTHER
     mood: MoodEnergy = MoodEnergy.FOCUS
     dresscode_override: DresscodeLevel | None = None

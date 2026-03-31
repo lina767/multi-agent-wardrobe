@@ -1,0 +1,143 @@
+:root {
+  font-family: "Segoe UI", sans-serif;
+  color: #112;
+  background: #f6f7fb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.layout {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.25rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.hero {
+  background: #ffffff;
+  border: 1px solid #dde2f0;
+  border-radius: 14px;
+  padding: 1rem 1.2rem;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #dde2f0;
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.error {
+  margin: 0;
+  color: #8a1524;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.8rem;
+}
+
+.row {
+  display: flex;
+  gap: 0.8rem;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.95rem;
+}
+
+.field.inline {
+  min-width: 180px;
+}
+
+input,
+select,
+button {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #c9d1e8;
+  border-radius: 8px;
+  background: #fff;
+}
+
+button {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 0.9rem;
+}
+
+.item {
+  border: 1px solid #e0e6f6;
+  border-radius: 10px;
+  padding: 0.75rem;
+  display: grid;
+  grid-template-columns: 90px 1fr auto;
+  gap: 0.8rem;
+  align-items: start;
+}
+
+.thumbWrap {
+  width: 90px;
+  height: 90px;
+}
+
+.thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.thumbPlaceholder {
+  width: 100%;
+  height: 100%;
+  border: 1px dashed #c3cde8;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #5f6d91;
+  font-size: 0.85rem;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.uploadButton input {
+  display: none;
+}
+
+.uploadButton {
+  border: 1px solid #c9d1e8;
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.9rem;
+  text-align: center;
+  cursor: pointer;
+}
+
+.suggestion {
+  border-top: 1px solid #edf0f8;
+  padding-top: 0.8rem;
+  margin-top: 0.8rem;
+}

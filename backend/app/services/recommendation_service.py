@@ -244,6 +244,11 @@ def build_recommendations(
     supervisor_context = {
         "event_type": body.context.event_type.value,
         "temperature_c": body.context.temperature_c,
+        "feels_like_c": body.context.feels_like_c,
+        "rain_probability": body.context.rain_probability,
+        "uv_index": body.context.uv_index,
+        "wind_speed_kph": body.context.wind_speed_kph,
+        "forecast_summary": body.context.forecast_summary,
         "mood": body.context.mood.value,
         "notes": body.context.notes,
     }

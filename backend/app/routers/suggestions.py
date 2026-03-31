@@ -12,6 +12,7 @@ from app.db.session import get_db
 from app.models.profile import OutfitLog, OutfitSuggestion, UserProfile
 from app.domain.enums import EventType, MoodEnergy
 from app.services.recommendation_service import build_recommendations
+from app.services.weather import WeatherService
 
 router = APIRouter(tags=["suggestions"])
 
@@ -50,8 +51,18 @@ async def get_suggestions(
     except ValueError:
         mood_enum = MoodEnergy.FOCUS
 
+    weather_data = {}
+    if location:
+        weather_data = await WeatherService().fetch_current(location)
+
     req = RecommendationRequest(
         context=ContextInput(
+            temperature_c=weather_data.get("temperature_c"),
+            feels_like_c=weather_data.get("feels_like_c"),
+            rain_probability=weather_data.get("rain_probability"),
+            uv_index=weather_data.get("uv_index"),
+            wind_speed_kph=weather_data.get("wind_speed_kph"),
+            forecast_summary=weather_data.get("forecast_summary"),
             event_type=_occasion_to_event(occasion),
             mood=mood_enum,
             notes=f"occasion={occasion.lower()} location={location or ''}".strip(),
@@ -100,7 +111,7 @@ async def get_suggestions(
         "context": {
             "mood": mood_enum.value,
             "occasion": occasion.lower(),
-            "weather": {},
+            "weather": weather_data,
         },
         "style_profile": {},
         "color_profile": {},

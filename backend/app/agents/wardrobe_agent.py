@@ -10,6 +10,46 @@ from app.domain.entities import AgentEvaluationResult, OutfitCandidateDTO, Recom
 
 
 class WardrobeAgent:
+    @staticmethod
+    def _trim_slot_lists(
+        tops: list[WardrobeItemDTO],
+        bottoms: list[WardrobeItemDTO],
+        shoes: list[WardrobeItemDTO],
+        outers: list[WardrobeItemDTO],
+        accessories: list[WardrobeItemDTO],
+        max_candidates: int,
+    ) -> tuple[list[WardrobeItemDTO], list[WardrobeItemDTO], list[WardrobeItemDTO], list[WardrobeItemDTO], list[WardrobeItemDTO]]:
+        slot_lists: dict[str, list[WardrobeItemDTO]] = {
+            "top": sorted(tops, key=lambda item: item.id),
+            "bottom": sorted(bottoms, key=lambda item: item.id),
+            "shoes": sorted(shoes, key=lambda item: item.id),
+            "outer": sorted(outers, key=lambda item: item.id),
+            "accessory": sorted(accessories, key=lambda item: item.id),
+        }
+        min_sizes = {"top": 1, "bottom": 1, "shoes": 1, "outer": 0, "accessory": 0}
+        budget = max(max_candidates * 3, max_candidates)
+
+        def estimate() -> int:
+            outer_count = max(1, len(slot_lists["outer"]))
+            accessory_count = max(1, len(slot_lists["accessory"]))
+            return len(slot_lists["top"]) * len(slot_lists["bottom"]) * len(slot_lists["shoes"]) * outer_count * accessory_count
+
+        # Reduce largest slots early so candidate generation stays bounded.
+        while estimate() > budget:
+            shrinkable = [slot for slot, values in slot_lists.items() if len(values) > min_sizes[slot]]
+            if not shrinkable:
+                break
+            target = max(shrinkable, key=lambda slot: len(slot_lists[slot]))
+            slot_lists[target] = slot_lists[target][:-1]
+
+        return (
+            slot_lists["top"],
+            slot_lists["bottom"],
+            slot_lists["shoes"],
+            slot_lists["outer"],
+            slot_lists["accessory"],
+        )
+
     def analyze_wardrobe(self, items: list[dict], color_profile: dict | None = None) -> dict:
         available_items = [i for i in items if i.get("is_available", True)]
         graph = self._build_graph(available_items)
@@ -59,8 +99,18 @@ class WardrobeAgent:
         if not tops or not bottoms or not shoes:
             return []
 
-        outers = by_slot["outer"] or [None]
-        accessories = by_slot["accessory"] or [None]
+        outers = by_slot["outer"]
+        accessories = by_slot["accessory"]
+        tops, bottoms, shoes, outers, accessories = self._trim_slot_lists(
+            tops=tops,
+            bottoms=bottoms,
+            shoes=shoes,
+            outers=outers,
+            accessories=accessories,
+            max_candidates=max_candidates,
+        )
+        outers = outers or [None]
+        accessories = accessories or [None]
         out: list[OutfitCandidateDTO] = []
         for top, bottom, shoe, outer, accessory in product(tops, bottoms, shoes, outers, accessories):
             cand_items = [top, bottom, shoe]

@@ -61,3 +61,33 @@ def test_supervise_falls_back_without_api_key():
     assert out["final_ranking"] == ["1-2-3", "4-5-6"]
     assert "adjusted_weights" in out
     assert "harmony" in out["adjusted_weights"]
+
+
+def test_validate_supervisor_payload_normalizes_and_filters():
+    orch = OrchestratorAgent()
+    fallback = {
+        "adjusted_weights": {"harmony": 0.25, "style_fit": 0.25, "wardrobe_coherence": 0.2, "context_fit": 0.3},
+        "final_ranking": ["1-2-3", "4-5-6"],
+        "synthesis_text": {"1-2-3": "fallback one", "4-5-6": "fallback two"},
+        "conflict_flags": {"1-2-3": [], "4-5-6": []},
+    }
+    payload = {
+        "adjusted_weights": {"harmony": 3, "style_fit": 1, "wardrobe_coherence": 0, "context_fit": 0},
+        "final_ranking": ["4-5-6", "oops", "4-5-6"],
+        "synthesis_text": {"4-5-6": "haiku text"},
+        "conflict_flags": {
+            "4-5-6": ["weather_mismatch", "invalid_flag", "weather_mismatch"],
+            "1-2-3": ["mood_conflict"],
+        },
+    }
+    out = orch._validate_supervisor_payload(
+        payload=payload,
+        fallback=fallback,
+        default_weights=fallback["adjusted_weights"],
+        candidate_keys=["1-2-3", "4-5-6"],
+    )
+    assert out["final_ranking"] == ["4-5-6", "1-2-3"]
+    assert out["conflict_flags"]["4-5-6"] == ["weather_mismatch"]
+    assert out["conflict_flags"]["1-2-3"] == ["mood_conflict"]
+    assert out["synthesis_text"]["1-2-3"] == "fallback one"
+    assert abs(sum(out["adjusted_weights"].values()) - 1.0) < 0.001

@@ -47,13 +47,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(health.router, prefix="/v1")
-app.include_router(wardrobe.router, prefix="/v1")
-app.include_router(recommendations.router, prefix="/v1")
-app.include_router(feedback.router, prefix="/v1")
-app.include_router(profile.router, prefix="/api/v1")
-app.include_router(suggestions.router, prefix="/api/v1")
-app.include_router(analytics.router, prefix="/api/v1")
+API_PREFIX = "/api/v1"
+LEGACY_PREFIX = "/v1"
+
+app.include_router(health.router, prefix=API_PREFIX)
+app.include_router(wardrobe.router, prefix=API_PREFIX)
+app.include_router(recommendations.router, prefix=API_PREFIX)
+app.include_router(feedback.router, prefix=API_PREFIX)
+app.include_router(profile.router, prefix=API_PREFIX)
+app.include_router(suggestions.router, prefix=API_PREFIX)
+app.include_router(analytics.router, prefix=API_PREFIX)
+
+# Keep legacy paths available but hidden from OpenAPI.
+app.include_router(health.router, prefix=LEGACY_PREFIX, include_in_schema=False)
+app.include_router(wardrobe.router, prefix=LEGACY_PREFIX, include_in_schema=False)
+app.include_router(recommendations.router, prefix=LEGACY_PREFIX, include_in_schema=False)
+app.include_router(feedback.router, prefix=LEGACY_PREFIX, include_in_schema=False)
+app.include_router(profile.router, prefix=LEGACY_PREFIX, include_in_schema=False)
+app.include_router(suggestions.router, prefix=LEGACY_PREFIX, include_in_schema=False)
+app.include_router(analytics.router, prefix=LEGACY_PREFIX, include_in_schema=False)
 
 APP_DIR = Path(__file__).resolve().parent
 BASE_DIR = APP_DIR.parent
@@ -61,16 +73,22 @@ ROOT_DIR = BASE_DIR.parent
 FRONTEND_DIR = ROOT_DIR / "frontend"
 if not FRONTEND_DIR.exists():
     FRONTEND_DIR = APP_DIR / "frontend"
+FRONTEND_DIST_DIR = FRONTEND_DIR / "dist"
 MEDIA_DIR = BASE_DIR / "data"
 FRONTEND_DIR.mkdir(parents=True, exist_ok=True)
 MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 
 app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
+app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST_DIR / "assets"), check_dir=False), name="frontend-assets")
 
 
 @app.get("/", include_in_schema=False)
 def frontend_index():
-    index = FRONTEND_DIR / "index.html"
+    index = FRONTEND_DIST_DIR / "index.html"
+    if index.exists():
+        return FileResponse(index)
+
+    index = APP_DIR / "frontend" / "index.html"
     if index.exists():
         return FileResponse(index)
     return {"message": "Frontend not found. Open /docs for API."}
