@@ -35,8 +35,8 @@ describe("RootApp routing", () => {
         <RootApp />
       </MemoryRouter>,
     );
-    expect(screen.getByText(/Dein digitaler Kleiderschrank mit persoenlicher Outfit-Intelligenz/)).toBeTruthy();
-    expect(screen.getByText(/Jetzt starten/)).toBeTruthy();
+    expect(screen.getByText(/Your digital wardrobe with personalized outfit intelligence/)).toBeTruthy();
+    expect(screen.getByText(/Get started/)).toBeTruthy();
   });
 
   it("redirects guests from /dashboard to /login", () => {

@@ -74,7 +74,7 @@ export function LoginPage() {
 
   async function handlePasswordReset() {
     if (!email.trim()) {
-      setError("Bitte gib zuerst deine E-Mail-Adresse ein.");
+      setError("Please enter your email address first.");
       setStatus(null);
       return;
     }
@@ -130,7 +130,7 @@ export function LoginPage() {
           </label>
           {method === "password" ? (
             <label className="field">
-              Passwort
+              Password
               <input type="password" required value={password} onChange={(event) => setPassword(event.target.value)} />
             </label>
           ) : null}
