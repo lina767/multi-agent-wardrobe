@@ -26,6 +26,8 @@ describe("RootApp routing", () => {
       isLoading: false,
       isAuthenticated: false,
       sendMagicLink: vi.fn(),
+      signInWithPassword: vi.fn(),
+      requestPasswordReset: vi.fn(),
       signOut: vi.fn(),
     });
     render(
@@ -33,8 +35,8 @@ describe("RootApp routing", () => {
         <RootApp />
       </MemoryRouter>,
     );
-    expect(screen.getByText(/Wardrobe Intelligence, with Koselig Warmth/)).toBeTruthy();
-    expect(screen.getByText(/Continue with magic link/)).toBeTruthy();
+    expect(screen.getByText(/Dein digitaler Kleiderschrank mit persoenlicher Outfit-Intelligenz/)).toBeTruthy();
+    expect(screen.getByText(/Jetzt starten/)).toBeTruthy();
   });
 
   it("redirects guests from /dashboard to /login", () => {
@@ -44,6 +46,8 @@ describe("RootApp routing", () => {
       isLoading: false,
       isAuthenticated: false,
       sendMagicLink: vi.fn(),
+      signInWithPassword: vi.fn(),
+      requestPasswordReset: vi.fn(),
       signOut: vi.fn(),
     });
     render(
@@ -61,6 +65,8 @@ describe("RootApp routing", () => {
       isLoading: false,
       isAuthenticated: true,
       sendMagicLink: vi.fn(),
+      signInWithPassword: vi.fn(),
+      requestPasswordReset: vi.fn(),
       signOut: vi.fn(),
     });
     render(

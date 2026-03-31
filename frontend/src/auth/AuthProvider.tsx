@@ -12,6 +12,8 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   authError: string | null;
   sendMagicLink: (email: string) => Promise<void>;
+  signInWithPassword: (email: string, password: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -81,6 +83,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         const emailRedirectTo = `${window.location.origin}/auth/callback`;
         const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo } });
+        if (error) {
+          throw error;
+        }
+      },
+      signInWithPassword: async (email: string, password: string) => {
+        let supabase;
+        try {
+          supabase = getSupabaseClient();
+        } catch (error) {
+          throw new Error(error instanceof Error ? error.message : "Supabase auth is not configured.");
+        }
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) {
+          throw error;
+        }
+      },
+      requestPasswordReset: async (email: string) => {
+        let supabase;
+        try {
+          supabase = getSupabaseClient();
+        } catch (error) {
+          throw new Error(error instanceof Error ? error.message : "Supabase auth is not configured.");
+        }
+        const redirectTo = `${window.location.origin}/auth/callback`;
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
         if (error) {
           throw error;
         }

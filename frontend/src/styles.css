@@ -81,6 +81,170 @@ a {
   background: linear-gradient(145deg, #fff8ef, #f3e5d2);
 }
 
+.landingLayout {
+  padding-top: 1.1rem;
+  padding-bottom: 2rem;
+}
+
+.landingTopbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(6px);
+  background: rgba(244, 235, 223, 0.75);
+  border-bottom: 1px solid rgba(188, 170, 146, 0.5);
+}
+
+.landingTopbarInner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0.7rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.landingBrand {
+  margin: 0;
+  font-family: "Plus Jakarta Sans", "Manrope", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.landingNav {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.landingNav a {
+  text-decoration: none;
+  color: #5e4d3d;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.landingNav a:hover {
+  color: #3d2f23;
+}
+
+.landingHero h1 {
+  max-width: 18ch;
+}
+
+.landingStatGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.landingStat {
+  border: 1px solid #d9c5ac;
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  background: rgba(255, 252, 247, 0.8);
+}
+
+.landingStat p {
+  margin: 0;
+}
+
+.landingStatValue {
+  font-family: "Plus Jakarta Sans", "Manrope", sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #5a3c27;
+  margin-bottom: 0.2rem !important;
+}
+
+.landingSection h2 {
+  margin-top: 0.1rem;
+}
+
+.landingFeatureGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.7rem;
+}
+
+.landingFeature {
+  border: 1px solid #e1d2be;
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: #fffaf4;
+}
+
+.landingFeature h3 {
+  margin: 0.1rem 0 0.4rem;
+}
+
+.landingFeature p {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
+.landingSteps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.7rem;
+}
+
+.landingStepCard {
+  border: 1px solid #dbc8b2;
+  border-radius: 12px;
+  padding: 0.8rem;
+  background: #fffaf3;
+}
+
+.landingStepNumber {
+  margin: 0;
+  font-family: "Plus Jakarta Sans", "Manrope", sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #8a6644;
+}
+
+.landingStepCard h3 {
+  margin: 0.25rem 0;
+}
+
+.landingStepCard p {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
+.landingCta {
+  display: grid;
+  gap: 0.9rem;
+  background: linear-gradient(145deg, #fffaf2, #f1dfcb);
+}
+
+.landingFaq {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.7rem;
+}
+
+.landingFaq article {
+  border: 1px solid #e3d7c7;
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: #fff;
+}
+
+.landingFaq h3 {
+  margin: 0.1rem 0 0.4rem;
+}
+
+.landingFaq p {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
 .heroDashboard {
   background: linear-gradient(145deg, #fffaf3, #f2e4d1);
 }
@@ -466,6 +630,20 @@ button:hover {
 }
 
 @media (max-width: 720px) {
+  .landingTopbarInner {
+    padding: 0.65rem 1rem;
+    flex-wrap: wrap;
+  }
+
+  .landingNav {
+    order: 3;
+    width: 100%;
+  }
+
+  .landingHero h1 {
+    max-width: none;
+  }
+
   .layout {
     padding: 1rem;
   }
