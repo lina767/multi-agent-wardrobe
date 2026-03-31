@@ -3,19 +3,20 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.agents.base import AgentContext
 from app.agents.wardrobe_agent import WardrobeAgent
 from app.bootstrap import get_default_user_id
 from app.db.models import WardrobeItem
+from app.models.profile import UserProfile
 from app.db.session import get_db
 
 router = APIRouter(tags=["analytics"])
 
 
 @router.get("/wardrobe/analytics")
-async def wardrobe_analytics(db: Session = Depends(get_db)) -> dict:
+def wardrobe_analytics(db: Session = Depends(get_db)) -> dict:
     user_id = get_default_user_id(db)
     rows = db.query(WardrobeItem).filter(WardrobeItem.user_id == user_id).all()
+    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
     items = [
         {
             "id": r.id,
@@ -28,7 +29,5 @@ async def wardrobe_analytics(db: Session = Depends(get_db)) -> dict:
         }
         for r in rows
     ]
-    output = await WardrobeAgent().run(
-        AgentContext(user_id=user_id, wardrobe_items=items, mood="focus", occasion="casual")
-    )
-    return output.payload
+    color_profile = {"palette": profile.color_palette} if profile and profile.color_palette else None
+    return WardrobeAgent().analyze_wardrobe(items, color_profile=color_profile)

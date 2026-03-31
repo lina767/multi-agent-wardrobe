@@ -34,6 +34,8 @@ class EventType(str, Enum):
 
 
 class MoodEnergy(str, Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
+    POWER = "power"
+    CREATIVE = "creative"
+    COMFORT = "comfort"
+    SOCIAL = "social"
+    FOCUS = "focus"

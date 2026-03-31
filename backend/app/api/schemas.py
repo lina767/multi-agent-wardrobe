@@ -67,7 +67,7 @@ class WardrobeItemRead(WardrobeItemBase):
 class ContextInput(BaseModel):
     temperature_c: float | None = Field(None, description="Outdoor temperature Celsius")
     event_type: EventType = EventType.OTHER
-    mood: MoodEnergy = MoodEnergy.MEDIUM
+    mood: MoodEnergy = MoodEnergy.FOCUS
     dresscode_override: DresscodeLevel | None = None
     notes: str | None = None
 

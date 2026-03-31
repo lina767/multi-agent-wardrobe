@@ -47,3 +47,4 @@ class RecommendationPipelineInput:
     palette_bias: list[ColorFamily]
     items: list[WardrobeItemDTO]
     outfit_history_tags: list[str] = field(default_factory=list)
+    outfit_history: list[dict[str, Any]] = field(default_factory=list)

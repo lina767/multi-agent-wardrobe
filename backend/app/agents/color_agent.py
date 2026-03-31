@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import base64
 import json
+from io import BytesIO
 from pathlib import Path
 from urllib.request import Request, urlopen
 
-from app.agents.base import AgentContext, AgentOutput, BaseAgent
 from app.agents.constants import SEASON_PALETTES, SEASON_TYPES
 from app.config import settings
+from app.domain.entities import AgentEvaluationResult, OutfitCandidateDTO, RecommendationPipelineInput
+from app.domain.enums import ColorFamily
 from app.services.color_math import delta_e_lab, harmony_from_delta_e, hex_to_rgb, rgb_to_lab
 
 try:
@@ -18,18 +20,31 @@ except Exception:  # pragma: no cover
     Image = None
 
 
-class ColorAgent(BaseAgent):
-    name = "color_agent"
+class ColorAgent:
 
-    async def run(self, context: AgentContext) -> AgentOutput:
-        profile = context.shared.get("color_profile")
-        if not profile:
-            profile = self._fallback_profile()
-        scores = {}
-        for item in context.wardrobe_items:
-            dominant = self._dominant_item_hex(item)
-            scores[item["id"]] = self._harmony_score(dominant, profile["palette"])
-        return AgentOutput(agent_name=self.name, payload={"color_profile": profile, "item_color_scores": scores})
+    def evaluate(
+        self,
+        candidate: OutfitCandidateDTO,
+        pipeline: RecommendationPipelineInput,
+    ) -> AgentEvaluationResult:
+        palette_bias = set(pipeline.palette_bias)
+        item_colors = [cf for it in candidate.items for cf in it.color_families]
+        if not item_colors:
+            return AgentEvaluationResult(agent_name="color", partial_scores={"harmony": 0.5}, reasons=["No color signals available."])
+
+        neutrals = sum(1 for c in item_colors if c == ColorFamily.NEUTRAL)
+        harmony = 0.45 + min(0.3, neutrals * 0.08)
+        reasons = ["Neutral anchor improves harmony."]
+        if palette_bias:
+            overlap = sum(1 for c in item_colors if c in palette_bias)
+            harmony += min(0.25, overlap * 0.08)
+            if overlap > 0:
+                reasons.append("Respects user palette bias.")
+        return AgentEvaluationResult(
+            agent_name="color",
+            partial_scores={"harmony": max(0.0, min(1.0, harmony))},
+            reasons=reasons,
+        )
 
     async def analyze_selfie(self, selfie_bytes: bytes) -> dict:
         if not settings.anthropic_api_key:
@@ -100,12 +115,15 @@ class ColorAgent(BaseAgent):
         image_path = item.get("image_path")
         if image_path and Image:
             try:
+                if str(image_path).startswith(("http://", "https://")):
+                    with urlopen(image_path, timeout=10) as response:  # nosec B310
+                        raw = response.read()
+                    with Image.open(BytesIO(raw)) as img:
+                        return self._dominant_hex_from_clusters(img)
                 path = Path(image_path)
                 if path.exists():
                     with Image.open(path) as img:
-                        small = img.convert("RGB").resize((1, 1))
-                        rgb = small.getpixel((0, 0))
-                        return "#{:02X}{:02X}{:02X}".format(*rgb)
+                        return self._dominant_hex_from_clusters(img)
             except Exception:
                 pass
         mapping = {
@@ -120,6 +138,32 @@ class ColorAgent(BaseAgent):
             if str(family).lower() in mapping:
                 return mapping[str(family).lower()]
         return "#B5B0A1"
+
+    def _dominant_hex_from_clusters(self, img: "Image.Image") -> str:
+        rgb = img.convert("RGB")
+        pixels = list(rgb.resize((120, 120)).getdata())
+        if not pixels:
+            return "#B5B0A1"
+        centroids = [pixels[0], pixels[len(pixels) // 2], pixels[-1]]
+        clusters: list[list[tuple[int, int, int]]] = [[], [], []]
+        for _ in range(6):
+            clusters = [[], [], []]
+            for p in pixels:
+                idx = min(range(3), key=lambda i: (p[0] - centroids[i][0]) ** 2 + (p[1] - centroids[i][1]) ** 2 + (p[2] - centroids[i][2]) ** 2)
+                clusters[idx].append(p)
+            updated: list[tuple[int, int, int]] = []
+            for i, cluster in enumerate(clusters):
+                if not cluster:
+                    updated.append(centroids[i])
+                    continue
+                r = int(sum(px[0] for px in cluster) / len(cluster))
+                g = int(sum(px[1] for px in cluster) / len(cluster))
+                b = int(sum(px[2] for px in cluster) / len(cluster))
+                updated.append((r, g, b))
+            centroids = updated
+        idx = max(range(3), key=lambda i: len(clusters[i]))
+        r, g, b = centroids[idx]
+        return "#{:02X}{:02X}{:02X}".format(r, g, b)
 
     def _harmony_score(self, item_hex: str, palette: list[str]) -> float:
         item_lab = rgb_to_lab(hex_to_rgb(item_hex))

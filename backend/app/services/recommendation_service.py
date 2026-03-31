@@ -6,7 +6,11 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.agents import ColorAgent, ContextAgent, OrchestratorAgent, StyleAgent, WardrobeAgent
+from app.agents.color_agent import ColorAgent
+from app.agents.context_agent import ContextAgent
+from app.agents.orchestrator import OrchestratorAgent
+from app.agents.style_agent import StyleAgent
+from app.agents.wardrobe_agent import WardrobeAgent
 from app.api.schemas import (
     AgentContribution,
     EvidenceContribution,
@@ -18,7 +22,7 @@ from app.api.schemas import (
 from app.domain.entities import OutfitCandidateDTO, RecommendationPipelineInput, WardrobeItemDTO
 from app.domain.enums import ColorFamily, DresscodeLevel, WardrobeCategory
 from app.evidence.rules import EvidenceRuleEngine
-from app.db.models import OutfitLog, WardrobeItem
+from app.db.models import FeedbackEvent, OutfitLog, WardrobeItem
 
 
 def _item_to_dto(row: WardrobeItem) -> WardrobeItemDTO:
@@ -40,7 +44,7 @@ def _item_to_dto(row: WardrobeItem) -> WardrobeItemDTO:
     )
 
 
-def _history_tags(db: Session, user_id: int, limit: int = 30) -> list[str]:
+def _history_snapshot(db: Session, user_id: int, limit: int = 30) -> tuple[list[str], list[dict[str, Any]]]:
     rows = (
         db.query(OutfitLog)
         .filter(OutfitLog.user_id == user_id)
@@ -48,7 +52,25 @@ def _history_tags(db: Session, user_id: int, limit: int = 30) -> list[str]:
         .limit(limit)
         .all()
     )
+    feedback_rows = (
+        db.query(FeedbackEvent)
+        .filter(FeedbackEvent.user_id == user_id)
+        .order_by(FeedbackEvent.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    rating_by_combo: dict[tuple[int, ...], int] = {}
+    for f in feedback_rows:
+        try:
+            ids = json.loads(f.suggestion_item_ids_json)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(ids, list):
+            key = tuple(sorted(int(i) for i in ids))
+            rating_by_combo[key] = int(f.rating)
+
     tags: list[str] = []
+    history: list[dict[str, Any]] = []
     for r in rows:
         try:
             ids = json.loads(r.item_ids_json)
@@ -56,11 +78,16 @@ def _history_tags(db: Session, user_id: int, limit: int = 30) -> list[str]:
             continue
         if not isinstance(ids, list):
             continue
-        for wid in ids:
+        row_tags: list[str] = []
+        sorted_ids = tuple(sorted(int(i) for i in ids))
+        for wid in sorted_ids:
             item = db.query(WardrobeItem).filter(WardrobeItem.id == int(wid)).first()
             if item:
-                tags.extend(item.style_tags_json or [])
-    return tags
+                item_tags = list(item.style_tags_json or [])
+                tags.extend(item_tags)
+                row_tags.extend(item_tags)
+        history.append({"item_ids": list(sorted_ids), "style_tags": row_tags, "rating": rating_by_combo.get(sorted_ids)})
+    return tags, history
 
 
 def build_recommendations(
@@ -72,7 +99,7 @@ def build_recommendations(
     items = [_item_to_dto(r) for r in rows]
 
     style_prefs = body.style_preferences or UserStylePreferences()
-    hist_tags = _history_tags(db, user_id)
+    hist_tags, outfit_history = _history_snapshot(db, user_id)
 
     pipeline_base = RecommendationPipelineInput(
         context=body.context,
@@ -80,6 +107,7 @@ def build_recommendations(
         palette_bias=body.palette_bias,
         items=items,
         outfit_history_tags=hist_tags,
+        outfit_history=outfit_history,
     )
 
     wardrobe = WardrobeAgent()

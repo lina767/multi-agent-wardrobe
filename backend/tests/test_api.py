@@ -50,7 +50,7 @@ def test_recommendations_top3_with_evidence(client: TestClient) -> None:
         "context": {
             "temperature_c": 12.0,
             "event_type": "meeting",
-            "mood": "medium",
+            "mood": "focus",
         },
         "palette_bias": ["cool"],
         "max_candidates_to_rank": 30,
@@ -126,3 +126,50 @@ def test_upload_inventory_image(client: TestClient) -> None:
     body = up.json()
     assert body["image_url"] is not None
     assert body["image_url"].startswith("/media/uploads/")
+
+
+def test_recommendation_pipeline_integration_deterministic_and_evidence(client: TestClient) -> None:
+    items = [
+        ("White shirt", "top", "business", ["neutral"], ["classic"]),
+        ("Blue oxford", "top", "business", ["cool"], ["classic"]),
+        ("Black tee", "top", "casual", ["neutral"], ["minimalist"]),
+        ("Navy trousers", "bottom", "business", ["cool"], ["classic"]),
+        ("Gray chinos", "bottom", "smart_casual", ["neutral"], ["versatile"]),
+        ("Tailored blazer", "outer", "business", ["neutral"], ["classic"]),
+        ("Wool coat", "outer", "formal", ["neutral"], ["minimalist"]),
+        ("Black loafers", "shoes", "business", ["neutral"], ["classic"]),
+        ("White sneakers", "shoes", "casual", ["neutral"], ["minimalist"]),
+        ("Silver watch", "accessory", "smart_casual", ["cool"], ["versatile"]),
+    ]
+    for name, cat, formality, colors, tags in items:
+        r = client.post(
+            "/v1/wardrobe/items",
+            json={
+                "name": name,
+                "category": cat,
+                "color_families": colors,
+                "formality": formality,
+                "season_tags": ["spring", "autumn"],
+                "is_available": True,
+                "style_tags": tags,
+            },
+        )
+        assert r.status_code == 201
+
+    body = {
+        "context": {"temperature_c": 14, "event_type": "meeting", "mood": "power"},
+        "palette_bias": ["neutral", "cool"],
+        "max_candidates_to_rank": 60,
+    }
+    first = client.post("/v1/recommendations", json=body)
+    second = client.post("/v1/recommendations", json=body)
+    assert first.status_code == 200
+    assert second.status_code == 200
+    data1 = first.json()["suggestions"]
+    data2 = second.json()["suggestions"]
+    assert len(data1) >= 1
+    assert [s["item_ids"] for s in data1] == [s["item_ids"] for s in data2]
+    assert [s["total_score"] for s in data1] == [s["total_score"] for s in data2]
+    for suggestion in data1:
+        assert len(suggestion["evidence_tags"]) >= 2
+    assert any(any(tag["evidence_id"] == "enclothed_cognition" for tag in s["evidence_tags"]) for s in data1)

@@ -28,7 +28,7 @@ def _item(
 
 def test_enclothed_cognition_meeting_formal_boost():
     eng = EvidenceRuleEngine()
-    ctx = ContextInput(event_type=EventType.MEETING, mood=MoodEnergy.MEDIUM)
+    ctx = ContextInput(event_type=EventType.MEETING, mood=MoodEnergy.FOCUS)
     items = [
         _item(fid=1, cat=WardrobeCategory.TOP, formality=DresscodeLevel.SMART_CASUAL),
         _item(fid=2, cat=WardrobeCategory.BOTTOM, formality=DresscodeLevel.SMART_CASUAL),
@@ -42,7 +42,7 @@ def test_enclothed_cognition_meeting_formal_boost():
 
 def test_enclothed_cognition_no_boost_for_home():
     eng = EvidenceRuleEngine()
-    ctx = ContextInput(event_type=EventType.HOME, mood=MoodEnergy.MEDIUM)
+    ctx = ContextInput(event_type=EventType.HOME, mood=MoodEnergy.FOCUS)
     items = [
         _item(fid=1, cat=WardrobeCategory.TOP),
         _item(fid=2, cat=WardrobeCategory.BOTTOM),

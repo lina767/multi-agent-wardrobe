@@ -5,33 +5,26 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.agents.base import AgentContext
-from app.agents.color_agent import ColorAgent
-from app.agents.context_agent import ContextAgent
-from app.agents.orchestrator import OrchestratorAgent
-from app.agents.style_agent import StyleAgent
-from app.agents.wardrobe_agent import WardrobeAgent
+from app.api.schemas import ContextInput, RecommendationRequest
 from app.bootstrap import get_default_user_id
 from app.db.models import WardrobeItem
 from app.db.session import get_db
 from app.models.profile import OutfitLog, OutfitSuggestion, UserProfile
+from app.domain.enums import EventType, MoodEnergy
+from app.services.recommendation_service import build_recommendations
 
 router = APIRouter(tags=["suggestions"])
 
 
-def _to_item_dict(row: WardrobeItem) -> dict:
-    return {
-        "id": row.id,
-        "name": row.name,
-        "category": row.category,
-        "color_families": list(row.color_families_json or []),
-        "style_tags": list(row.style_tags_json or []),
-        "season_tags": list(row.season_tags_json or []),
-        "is_available": row.is_available,
-        "material": row.material,
-        "image_path": row.image_path,
-        "formality_score": 0.7 if row.formality in {"business", "formal"} else 0.5 if row.formality == "smart_casual" else 0.3,
+def _occasion_to_event(occasion: str) -> EventType:
+    mapping = {
+        "work": EventType.MEETING,
+        "date": EventType.DATE,
+        "casual": EventType.ERRAND,
+        "active": EventType.ERRAND,
+        "event": EventType.OTHER,
     }
+    return mapping.get(occasion.lower(), EventType.OTHER)
 
 
 @router.get("/suggestions")
@@ -46,54 +39,74 @@ async def get_suggestions(
     if not rows:
         raise HTTPException(status_code=400, detail="No wardrobe items found. Add items first.")
     profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
-    context = AgentContext(
-        user_id=user_id,
-        wardrobe_items=[_to_item_dict(r) for r in rows],
-        mood=mood.lower(),
-        occasion=occasion.lower(),
-        location=location,
-        shared={},
-    )
-    wardrobe_output = await WardrobeAgent().run(context)
-    context_output = await ContextAgent().run(context)
-    context.weather = context_output.payload.get("weather", {})
-    context.shared["context_filters"] = context_output.payload
+    palette_bias = []
     if profile and profile.color_palette:
-        context.shared["color_profile"] = {
-            "season": profile.color_season,
-            "undertone": profile.undertone,
-            "contrast_level": profile.contrast_level,
-            "palette": profile.color_palette,
-        }
-    color_output = await ColorAgent().run(context)
-    style_output = await StyleAgent().run(context)
-    context.shared["item_color_scores"] = color_output.payload.get("item_color_scores", {})
-    context.shared["mood_formulas"] = style_output.payload.get("mood_formulas", {})
-    orchestrated = await OrchestratorAgent().run(context)
+        # Recommendation API expects symbolic palette families, not hex values.
+        palette_bias = [c for c in ("neutral", "warm", "cool", "bold", "earth", "pastel") if any(c in str(v).lower() for v in profile.color_palette)]
+
+    mood_value = mood.lower()
+    try:
+        mood_enum = MoodEnergy(mood_value)
+    except ValueError:
+        mood_enum = MoodEnergy.FOCUS
+
+    req = RecommendationRequest(
+        context=ContextInput(
+            event_type=_occasion_to_event(occasion),
+            mood=mood_enum,
+            notes=f"occasion={occasion.lower()} location={location or ''}".strip(),
+        ),
+        palette_bias=palette_bias,
+        max_candidates_to_rank=120,
+    )
+    output = build_recommendations(db, user_id, req)
     saved = []
-    for suggestion in orchestrated.payload["suggestions"]:
-        breakdown = suggestion["reasoning_breakdown"]
+    for suggestion in output.suggestions:
+        partials: dict[str, float] = {}
+        for contrib in suggestion.agent_contributions:
+            partials.update(contrib.partial_scores)
+        breakdown = {
+            "color_score": round(partials.get("harmony", 0.0), 3),
+            "style_score": round(partials.get("style_fit", 0.0), 3),
+            "context_score": round(partials.get("context_fit", 0.0), 3),
+            "mood_alignment": round(partials.get("style_fit", 0.0), 3),
+            "sustainability": round(partials.get("wardrobe_coherence", 0.0), 3),
+        }
         model = OutfitSuggestion(
             user_id=user_id,
-            item_ids=suggestion["items"],
+            item_ids=suggestion.item_ids,
             color_score=breakdown["color_score"],
             style_score=breakdown["style_score"],
             context_score=breakdown["context_score"],
             mood_score=breakdown["mood_alignment"],
-            total_score=suggestion["total_score"],
-            reasoning=suggestion["explanation"],
+            total_score=suggestion.total_score,
+            reasoning=suggestion.explanation,
         )
         db.add(model)
         db.flush()
-        saved.append({"id": model.id, **suggestion})
+        saved.append(
+            {
+                "id": model.id,
+                "items": suggestion.item_ids,
+                "item_names": suggestion.item_names,
+                "total_score": suggestion.total_score,
+                "reasoning_breakdown": breakdown,
+                "explanation": suggestion.explanation,
+                "evidence_tags": [e.model_dump() for e in suggestion.evidence_tags],
+            }
+        )
     db.commit()
     return {
-        "context": context_output.payload,
-        "style_profile": style_output.payload.get("style_profile", {}),
-        "color_profile": color_output.payload.get("color_profile", {}),
+        "context": {
+            "mood": mood_enum.value,
+            "occasion": occasion.lower(),
+            "weather": {},
+        },
+        "style_profile": {},
+        "color_profile": {},
         "wardrobe": {
-            "outfit_potential": wardrobe_output.payload["outfit_potential"],
-            "capsule_suggestions": wardrobe_output.payload["capsule_suggestions"],
+            "outfit_potential": len(output.suggestions),
+            "capsule_suggestions": [],
         },
         "suggestions": saved[:3],
         "scientific_note": "We reduce choice overload by returning only 3 ranked outfits.",
