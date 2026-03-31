@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fashion Intelligence — Wissenschaftliche Analyse & Multi-Agent Potenzial</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --paper: #f8f6f1;
+    --cream: #f0ece4;
+    --warm: #c4956a;
+    --warm-light: #e8d5c0;
+    --warm-dark: #8b6544;
+    --accent: #6b4c8a;
+    --accent-light: #e8dff0;
+    --sage: #7a8c6e;
+    --sage-light: #dfe8da;
+    --rose: #b5727a;
+    --rose-light: #f0dde0;
+    --blue: #5a7a9e;
+    --blue-light: #d8e4ee;
+    --border: #d4cec4;
+    --muted: #8a8278;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  .hero {
+    background: linear-gradient(135deg, #2a1f3d 0%, #1a1a2e 40%, #16213e 100%);
+    color: white;
+    padding: 80px 40px 60px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(196,149,106,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -30%;
+    left: -10%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(107,76,138,0.12) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+
+  .hero-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--warm);
+    margin-bottom: 20px;
+  }
+
+  .hero h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(36px, 5vw, 56px);
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 24px;
+  }
+
+  .hero p {
+    font-size: 16px;
+    color: rgba(255,255,255,0.7);
+    max-width: 600px;
+    line-height: 1.8;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 40px;
+  }
+
+  .toc {
+    background: white;
+    border: 1px solid var(--border);
+    padding: 32px 36px;
+    margin: 48px auto;
+    max-width: 900px;
+  }
+  .toc h3 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .toc ol {
+    list-style: none;
+    counter-reset: toc;
+  }
+  .toc li {
+    counter-increment: toc;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--cream);
+    font-size: 14px;
+  }
+  .toc li:last-child { border-bottom: none; }
+  .toc li::before {
+    content: counter(toc, decimal-leading-zero) ".";
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--warm);
+    margin-right: 12px;
+    font-size: 12px;
+  }
+
+  section {
+    margin: 56px auto;
+    max-width: 900px;
+    padding: 0 40px;
+  }
+
+  .section-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--warm);
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 24px;
+    color: var(--ink);
+  }
+
+  h3 {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin: 32px 0 12px;
+    color: var(--ink);
+  }
+
+  p { margin-bottom: 16px; }
+
+  .insight-box {
+    border-left: 3px solid var(--warm);
+    background: linear-gradient(90deg, var(--warm-light) 0%, var(--paper) 100%);
+    padding: 20px 24px;
+    margin: 24px 0;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--warm-dark);
+  }
+
+  .framework-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 24px 0;
+  }
+  @media (max-width: 640px) {
+    .framework-grid { grid-template-columns: 1fr; }
+  }
+
+  .framework-card {
+    background: white;
+    border: 1px solid var(--border);
+    padding: 24px;
+    position: relative;
+  }
+  .framework-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 3px;
+  }
+  .framework-card.warm::before { background: var(--warm); }
+  .framework-card.accent::before { background: var(--accent); }
+  .framework-card.sage::before { background: var(--sage); }
+  .framework-card.rose::before { background: var(--rose); }
+  .framework-card.blue::before { background: var(--blue); }
+
+  .framework-card h4 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .framework-card.warm h4 { color: var(--warm-dark); }
+  .framework-card.accent h4 { color: var(--accent); }
+  .framework-card.sage h4 { color: var(--sage); }
+  .framework-card.rose h4 { color: var(--rose); }
+  .framework-card.blue h4 { color: var(--blue); }
+
+  .framework-card p {
+    font-size: 13px;
+    line-height: 1.65;
+    margin-bottom: 0;
+  }
+
+  .stat-row {
+    display: flex;
+    gap: 16px;
+    margin: 24px 0;
+    flex-wrap: wrap;
+  }
+  .stat-item {
+    flex: 1;
+    min-width: 140px;
+    background: white;
+    border: 1px solid var(--border);
+    padding: 20px;
+    text-align: center;
+  }
+  .stat-number {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--warm-dark);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 13px;
+  }
+  .comparison-table thead {
+    background: var(--ink);
+    color: white;
+  }
+  .comparison-table th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 500;
+  }
+  .comparison-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .comparison-table tr:nth-child(even) td {
+    background: rgba(0,0,0,0.02);
+  }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .tag.green { background: var(--sage-light); color: var(--sage); }
+  .tag.purple { background: var(--accent-light); color: var(--accent); }
+  .tag.orange { background: var(--warm-light); color: var(--warm-dark); }
+  .tag.red { background: var(--rose-light); color: var(--rose); }
+  .tag.blue { background: var(--blue-light); color: var(--blue); }
+
+  .agent-architecture {
+    background: white;
+    border: 1px solid var(--border);
+    padding: 32px;
+    margin: 32px 0;
+  }
+
+  .agent-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 20px 0;
+  }
+
+  .agent-node {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+  .agent-sidebar {
+    width: 4px;
+    flex-shrink: 0;
+  }
+  .agent-content {
+    flex: 1;
+    padding: 16px 20px;
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-left: none;
+  }
+  .agent-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .agent-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .agent-connector {
+    width: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--muted);
+    font-size: 16px;
+    margin-left: 20px;
+  }
+
+  .gap-matrix {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin: 24px 0;
+  }
+  @media (max-width: 640px) {
+    .gap-matrix { grid-template-columns: 1fr; }
+  }
+
+  .gap-item {
+    padding: 16px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .gap-item.problem {
+    background: var(--rose-light);
+    border-left: 3px solid var(--rose);
+  }
+  .gap-item.partial {
+    background: var(--warm-light);
+    border-left: 3px solid var(--warm);
+  }
+  .gap-item.solved {
+    background: var(--sage-light);
+    border-left: 3px solid var(--sage);
+  }
+  .gap-item strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .verdict {
+    background: linear-gradient(135deg, #2a1f3d 0%, #16213e 100%);
+    color: white;
+    padding: 40px;
+    margin: 40px 0;
+  }
+  .verdict h3 {
+    color: var(--warm);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 24px;
+    margin-bottom: 16px;
+  }
+  .verdict p {
+    color: rgba(255,255,255,0.8);
+    font-size: 14px;
+  }
+
+  .source-list {
+    font-size: 12px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+    margin-top: 40px;
+    line-height: 1.8;
+  }
+  .source-list strong {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 8px;
+    color: var(--ink);
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 48px 0;
+  }
+
+  .callout-number {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 60px;
+    font-weight: 700;
+    color: var(--warm);
+    line-height: 1;
+    float: left;
+    margin-right: 16px;
+    margin-top: -4px;
+  }
+
+  .potential-meter {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .meter-bar {
+    flex: 1;
+    height: 8px;
+    background: var(--cream);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .meter-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s ease;
+  }
+  .meter-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 100px;
+  }
+  .meter-score {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    min-width: 40px;
+    text-align: right;
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-label">Forschungsanalyse · März 2026</div>
+    <h1>Die Wissenschaft des Anziehens — und warum Multi-Agent AI die Lösung ist</h1>
+    <p>Eine Analyse der psychologischen Grundlagen, wissenschaftlichen Lösungsansätze, aktuellen Marktlandschaft und des Potenzials einer Multi-Agent-Architektur für personalisierte Fashion Intelligence.</p>
+  </div>
+</div>
+
+<div class="toc container">
+  <h3>Inhaltsverzeichnis</h3>
+  <ol>
+    <li>Das psychologische Problem: Warum Kleidungswahl so schwer fällt</li>
+    <li>Wissenschaftliche Lösungsansätze: Was die Forschung sagt</li>
+    <li>Marktlandschaft 2026: Aktuelle AI-Fashion-Lösungen</li>
+    <li>Gap-Analyse: Was existierende Lösungen nicht können</li>
+    <li>Multi-Agent-Architektur: Das Potenzial</li>
+    <li>Fazit & strategische Bewertung</li>
+  </ol>
+</div>
+
+<!-- SECTION 1 -->
+<section>
+  <span class="section-number">01 — Das Problem</span>
+  <h2>Warum Kleidungswahl kognitiv so anspruchsvoll ist</h2>
+
+  <p>Das morgendliche „Ich habe nichts anzuziehen" — ausgesprochen vor einem vollen Kleiderschrank — ist kein individuelles Versagen, sondern ein gut dokumentiertes psychologisches Phänomen. Die Forschung identifiziert vier zentrale Mechanismen, die zusammenwirken:</p>
+
+  <div class="framework-grid">
+    <div class="framework-card warm">
+      <h4>Decision Fatigue</h4>
+      <p>Roy Baumeister zeigte, dass Entscheidungen dieselbe kognitive Ressource verbrauchen wie Willenskraft. Kleidungswahl ist oft die erste komplexe Entscheidung des Tages — mit Dutzenden Variablen (Wetter, Anlass, Körpergefühl, soziale Erwartung). Studien zeigen 42% Abbruchrate bei zu vielen Optionen.</p>
+    </div>
+    <div class="framework-card accent">
+      <h4>Paradox of Choice</h4>
+      <p>Barry Schwartz' Theorie findet in Kleiderschränken ihr Paradebeispiel: Iyengar & Lepper (2000) zeigten, dass zu viele Optionen zu „Choice Overload" führen — mentale Erschöpfung, suboptimale Entscheidungen und ein Gefühl der Überwältigung.</p>
+    </div>
+    <div class="framework-card sage">
+      <h4>Enclothed Cognition</h4>
+      <p>Adam & Galinsky (2012) prägten den Begriff: Kleidung beeinflusst systematisch unsere psychologischen Prozesse — abhängig von symbolischer Bedeutung UND dem physischen Tragen. Eine Meta-Analyse (2023, N=3.789) bestätigt die Evidenz für post-2015 Studien.</p>
+    </div>
+    <div class="framework-card rose">
+      <h4>Kognitive Dissonanz</h4>
+      <p>Festinger (1957): Wenn unsere Kleidung nicht mit unserem Selbstbild übereinstimmt, erzeugt dies psychischen Stress. 86% der Befragten stimmen zu, dass Kleidungswahl ihr Selbstvertrauen signifikant beeinflusst.</p>
+    </div>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-item">
+      <div class="stat-number">17</div>
+      <div class="stat-label">Minuten pro Tag für Outfit-Wahl</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">60%</div>
+      <div class="stat-label">Ersteindruck basiert auf Kleidung</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">85%</div>
+      <div class="stat-label">verknüpfen Mode mit Selbstausdruck</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">81 lbs</div>
+      <div class="stat-label">Kleidung/Jahr weggeworfen (USA)</div>
+    </div>
+  </div>
+
+  <div class="insight-box">
+    <strong>Kernproblem:</strong> Kleidungswahl ist nicht eine, sondern ein Bündel simultaner Entscheidungen — Farbharmonie, Stilkohärenz, Kontextangemessenheit, Körpergefühl, Wetterbedingung — die alle morgens unter Zeitdruck getroffen werden müssen. Kein einzelnes Tool löst aktuell alle Dimensionen gleichzeitig.
+  </div>
+</section>
+
+<div class="divider container"></div>
+
+<!-- SECTION 2 -->
+<section>
+  <span class="section-number">02 — Wissenschaftliche Lösungsansätze</span>
+  <h2>Was die Forschung als Lösungen identifiziert</h2>
+
+  <h3>A. Seasonal Color Analysis (Farbanalyse)</h3>
+  <p>Verwurzelt in Johannes Ittens Farbtheorie (1920er) und popularisiert durch Carole Jacksons „Color Me Beautiful" (1980), kategorisiert die Farbanalyse individuelle Merkmale (Hautunterton, Augenfarbe, Haarfarbe) in saisonale Typen. Das moderne 12-Typen-System arbeitet mit drei Farbdimensionen:</p>
+
+  <div class="framework-grid">
+    <div class="framework-card blue">
+      <h4>Hue (Farbtemperatur)</h4>
+      <p>Warm (gelb-basiert) vs. Cool (blau-basiert) — bestimmt durch den Unterton der Haut. Gold- vs. Silberschmuck-Test als einfachste Selbstbestimmung.</p>
+    </div>
+    <div class="framework-card warm">
+      <h4>Value (Helligkeit/Kontrast)</h4>
+      <p>Wie hell oder dunkel die Gesamterscheinung ist. Hoher Kontrast (helle Haut + dunkles Haar) vs. niedriger Kontrast bestimmt die passende Farbintensität.</p>
+    </div>
+    <div class="framework-card accent">
+      <h4>Chroma (Sättigung)</h4>
+      <p>Die dritte, oft vergessene Dimension: Klar/leuchtend vs. gedämpft/muted. Erklärt, warum manche Menschen in Pastelltönen verschwinden, andere darin strahlen.</p>
+    </div>
+    <div class="framework-card sage">
+      <h4>12 → 16 Saisons</h4>
+      <p>Das erweiterte System erkennt Übergänge zwischen Haupttypen an. Kontrovers: Keine standardisierte Zertifizierung, keine wissenschaftlichen Peer-Review-Studien zur Validität der saisonalen Zuordnung.</p>
+    </div>
+  </div>
+
+  <h3>B. Capsule Wardrobe (Minimalismus-Ansatz)</h3>
+  <p>Das Konzept, popularisiert von Susie Faux und dem Project 333, löst das Paradox of Choice durch radikale Reduktion: 30–50 Teile, die untereinander kombinierbar sind. Die University of Leeds bestätigt, dass MinimalistInnen bewusster einkaufen und Kleidung deutlich länger tragen. Eine MDPI-Studie (2022) zeigte zudem, dass Capsule Wardrobes die Kreativität der TrägerInnen nachweislich steigern — die Einschränkung erzwingt neue Kombinationen.</p>
+
+  <div class="insight-box">
+    <strong>Das modulare Prinzip:</strong> Ein Capsule-Wardrobe besteht aus Modulen (je 2 Hosen, 3 Oberteile, 1 Layering-Piece, 1 Paar Schuhe). 30 Teile → 100+ einzigartige Outfit-Kombinationen. Die „Rule of Five" besagt: Kaufe nichts, das nicht mindestens 5 Outfits mit vorhandenen Teilen ermöglicht.
+  </div>
+
+  <h3>C. Enclothed Cognition (Strategisches Anziehen)</h3>
+  <p>Adam & Galinsky zeigten experimentell, dass Kleidung mit spezifischer symbolischer Bedeutung die kognitive Performance messbar verändert. Praxisimplikation: „Outfit-Formeln" — feste Kleidungskombinationen für wiederkehrende Kontexte (Prüfungstag, Präsentation, kreativer Tag) — reduzieren Decision Fatigue und aktivieren gezielt gewünschte psychologische Zustände.</p>
+</section>
+
+<div class="divider container"></div>
+
+<!-- SECTION 3 -->
+<section>
+  <span class="section-number">03 — Marktlandschaft 2026</span>
+  <h2>Aktuelle AI-Fashion-Lösungen im Vergleich</h2>
+
+  <p>2025 nutzten 47 Millionen Menschen AI-Fashion-Apps — für 2026 werden über 85 Millionen prognostiziert. McKinsey identifiziert Personalisierung und Nachhaltigkeit als die zwei Haupttreiber digitaler Fashion-Adoption. Doch der Markt ist fragmentiert:</p>
+
+  <div style="overflow-x: auto;">
+  <table class="comparison-table">
+    <thead>
+      <tr>
+        <th>App</th>
+        <th>Kernfunktion</th>
+        <th>Farbanalyse</th>
+        <th>AI-Outfits</th>
+        <th>Virtual Try-On</th>
+        <th>Preis</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Fits</strong></td>
+        <td>Digital Closet + AI Styling</td>
+        <td><span class="tag red">Nein</span></td>
+        <td><span class="tag green">Ja, 3D</span></td>
+        <td><span class="tag green">Ja</span></td>
+        <td>Free / $3.33/Mo</td>
+      </tr>
+      <tr>
+        <td><strong>Indyx</strong></td>
+        <td>Wardrobe-Digitalisierung + Human Stylists</td>
+        <td><span class="tag red">Nein</span></td>
+        <td><span class="tag orange">Human</span></td>
+        <td><span class="tag red">Nein</span></td>
+        <td>Free</td>
+      </tr>
+      <tr>
+        <td><strong>Acloset</strong></td>
+        <td>Digital Closet + Color Analysis</td>
+        <td><span class="tag green">Ja (Selfie)</span></td>
+        <td><span class="tag orange">Basis-AI</span></td>
+        <td><span class="tag red">Nein</span></td>
+        <td>Free / €30/Jahr</td>
+      </tr>
+      <tr>
+        <td><strong>Style DNA</strong></td>
+        <td>Farbpaletten-Analyse</td>
+        <td><span class="tag green">Ja (12 Typen)</span></td>
+        <td><span class="tag red">Nein</span></td>
+        <td><span class="tag red">Nein</span></td>
+        <td>Free / Premium</td>
+      </tr>
+      <tr>
+        <td><strong>Whering</strong></td>
+        <td>Nachhaltigkeit + Wardrobe Analytics</td>
+        <td><span class="tag red">Nein</span></td>
+        <td><span class="tag green">AI + Random</span></td>
+        <td><span class="tag red">Nein</span></td>
+        <td>Free / €5/Mo</td>
+      </tr>
+      <tr>
+        <td><strong>Cladwell</strong></td>
+        <td>Capsule Wardrobe Builder</td>
+        <td><span class="tag red">Nein</span></td>
+        <td><span class="tag green">Ja</span></td>
+        <td><span class="tag red">Nein</span></td>
+        <td>Subscription</td>
+      </tr>
+      <tr>
+        <td><strong>LUMI</strong></td>
+        <td>AI Stylist + Community</td>
+        <td><span class="tag orange">Limitiert</span></td>
+        <td><span class="tag green">Ja</span></td>
+        <td><span class="tag orange">Basis</span></td>
+        <td>Free / Premium</td>
+      </tr>
+      <tr>
+        <td><strong>DressX</strong></td>
+        <td>Digital Fashion + Avatar Try-On</td>
+        <td><span class="tag red">Nein</span></td>
+        <td><span class="tag green">AI Agent</span></td>
+        <td><span class="tag green">Ja (Avatar)</span></td>
+        <td>Varies</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p style="margin-top: 24px;">Auf der Enterprise-Seite hat Boyner (türkischer Modehändler) 2025 die erste Multi-Agent Fashion Assistant Architektur auf Microsoft Azure veröffentlicht — mit spezialisierten Agenten für Silhouetten-Matching, Marken-Saison-Kompatibilität und Trend-Signale. Akademisch liefert FashionM3 (2025) ein multimodales Vision-Language-Modell mit 91,67% Nutzerzufriedenheit bei Outfit-Entscheidungen.</p>
+</section>
+
+<div class="divider container"></div>
+
+<!-- SECTION 4 -->
+<section>
+  <span class="section-number">04 — Gap-Analyse</span>
+  <h2>Was existierende Lösungen nicht können</h2>
+
+  <div class="gap-matrix">
+    <div class="gap-item problem">
+      <strong>Ungelöst</strong>
+      Ganzheitliche Farbanalyse + Outfit-Planung in einem System — kein Tool integriert wissenschaftliche Farbtyp-Bestimmung mit Wardrobe Management
+    </div>
+    <div class="gap-item problem">
+      <strong>Ungelöst</strong>
+      Kontextbewusstsein über Zeit — Anpassung an Lebensphasen, Stilentwicklung, Gewichtsveränderungen, neue Rollen (Student → Professional)
+    </div>
+    <div class="gap-item problem">
+      <strong>Ungelöst</strong>
+      Capsule-Wardrobe-Optimierung mit mathematischer Kombinatorik — welche 30 Teile maximieren die Outfit-Anzahl?
+    </div>
+    <div class="gap-item partial">
+      <strong>Teilweise gelöst</strong>
+      Wetter + Kalender-Integration existiert, aber ohne Stilkonsistenz — AI schlägt „passend zum Wetter" vor, nicht „passend zu mir + Wetter"
+    </div>
+    <div class="gap-item partial">
+      <strong>Teilweise gelöst</strong>
+      Nachhaltigkeit wird getrackt (Cost-per-Wear), aber nicht als Entscheidungsparameter in Outfit-Vorschläge integriert
+    </div>
+    <div class="gap-item solved">
+      <strong>Gelöst</strong>
+      Wardrobe-Digitalisierung — Background Removal, Auto-Tagging und Kategorisierung funktionieren zuverlässig bei mehreren Apps
+    </div>
+    <div class="gap-item problem">
+      <strong>Ungelöst</strong>
+      Enclothed Cognition als Feature — kein Tool fragt „Wie willst du dich heute fühlen?" und übersetzt das in Outfit-Empfehlungen
+    </div>
+    <div class="gap-item partial">
+      <strong>Teilweise gelöst</strong>
+      Virtual Try-On existiert, aber oft ungenau bei Passform, Textur und Proportionsdarstellung
+    </div>
+    <div class="gap-item problem">
+      <strong>Ungelöst</strong>
+      Shopping-Beratung, die bestehenden Kleiderschrank analysiert und exakt die Lücken identifiziert, die den größten kombinatorischen Mehrwert bieten
+    </div>
+  </div>
+
+  <div class="insight-box">
+    <strong>Das Kernproblem aller aktuellen Apps:</strong> Sie sind Single-Agent-Systeme. Ein Modell versucht, Farbtheorie, Stilberatung, Wetterdaten, Kalenderkontext, Nachhaltigkeitstracking und Shopping-Empfehlungen gleichzeitig zu leisten. Das Ergebnis: Inkonsistente Outfit-Pairings (Acloset), generische Empfehlungen (die meisten AI-Stylists) und fehlende Erklärbarkeit (warum dieses Outfit?).
+  </div>
+</section>
+
+<div class="divider container"></div>
+
+<!-- SECTION 5 -->
+<section>
+  <span class="section-number">05 — Multi-Agent Architektur</span>
+  <h2>Warum ein Multi-Agent-System das Potenzial hat, den Markt zu definieren</h2>
+
+  <p>Die Forschung (Boyner 2025, FashionM3 2025, AMMR-Pipeline) konvergiert auf eine klare Erkenntnis: Fashion-Empfehlungen sind ein inhärent multimodales, mehrdimensionales Problem — ideal für spezialisierte Agenten, die kooperieren.</p>
+
+  <div class="agent-architecture">
+    <h3 style="margin-top: 0;">Vorgeschlagene Agent-Architektur</h3>
+
+    <div class="agent-flow">
+      <div class="agent-node">
+        <div class="agent-sidebar" style="background: var(--warm);"></div>
+        <div class="agent-content">
+          <div class="agent-name" style="color: var(--warm-dark);">COLOR AGENT</div>
+          <div class="agent-desc">Analysiert Selfie → bestimmt Farbtyp (12-/16-Saison-System), erstellt persönliche Farbpalette. Bewertet jedes Kleidungsstück auf Farbharmonie mit dem individuellen Typ. Input: Fotos der Person. Output: Farbpalette + Harmonie-Scores für alle Wardrobe-Items.</div>
+        </div>
+      </div>
+      <div class="agent-connector">↕</div>
+      <div class="agent-node">
+        <div class="agent-sidebar" style="background: var(--accent);"></div>
+        <div class="agent-content">
+          <div class="agent-name" style="color: var(--accent);">STYLE AGENT</div>
+          <div class="agent-desc">Lernt individuellen Stil aus getragenen Outfits (nicht nur besessenen Teilen). Klassifiziert in Stil-Cluster (Minimalist, Bohemian, Classic, Edgy etc.) und kennt Style-Regeln (Proportionen, Silhouetten, Layering). Nutzt Enclothed-Cognition-Forschung: „Power Outfit", „Creative Outfit", „Comfort Outfit". Input: Outfit-Historie, Stimmungs-Präferenzen. Output: Stil-Profile + Mood-based Outfit-Formeln.</div>
+        </div>
+      </div>
+      <div class="agent-connector">↕</div>
+      <div class="agent-node">
+        <div class="agent-sidebar" style="background: var(--sage);"></div>
+        <div class="agent-content">
+          <div class="agent-name" style="color: var(--sage);">WARDROBE AGENT</div>
+          <div class="agent-desc">Verwaltet den digitalen Kleiderschrank als Graph-Datenstruktur (Items = Nodes, Kombinierbarkeit = Edges). Berechnet kombinatorische Optimierung: Welche 30 Teile maximieren die Outfit-Anzahl? Identifiziert „Missing Links" — das eine Teil, das 15 neue Kombinationen ermöglicht. Input: Inventar-Daten. Output: Capsule-Vorschläge, Gap-Analyse, Usage-Analytics.</div>
+        </div>
+      </div>
+      <div class="agent-connector">↕</div>
+      <div class="agent-node">
+        <div class="agent-sidebar" style="background: var(--blue);"></div>
+        <div class="agent-content">
+          <div class="agent-name" style="color: var(--blue);">CONTEXT AGENT</div>
+          <div class="agent-desc">Aggregiert Echtzeit-Kontext: Wetter-API, Kalender-Events (Meeting vs. Date vs. Homeoffice), aktuelle Tagesenergie (Mood-Input), saisonale Trends. Filtert die Outfit-Optionen der anderen Agenten nach Relevanz. Input: Wetter, Kalender, User-Mood. Output: Kontextuelle Filter + Ranking-Kriterien.</div>
+        </div>
+      </div>
+      <div class="agent-connector">↕</div>
+      <div class="agent-node">
+        <div class="agent-sidebar" style="background: var(--rose);"></div>
+        <div class="agent-content">
+          <div class="agent-name" style="color: var(--rose);">ORCHESTRATOR AGENT</div>
+          <div class="agent-desc">Supervisor-Agent: Koordiniert die anderen Agenten, löst Konflikte (Style Agent will Bold, Context Agent sagt „konservatives Meeting"), generiert finale Top-3-Vorschläge mit Begründung. Erklärt: „Dieses Outfit, weil: Farbharmonie 92%, passt zu deinem Meeting, Power-Silhouette für Selbstbewusstsein." Input: Outputs aller Agenten. Output: Ranked Outfit-Vorschläge mit Reasoning.</div>
+        </div>
+      </div>
+    </div>
+
+    <p style="font-size: 13px; color: var(--muted); margin-top: 16px;">Optionale Erweiterungsagenten: SUSTAINABILITY AGENT (Cost-per-Wear, Carbon Footprint), SHOPPING AGENT (Gap-basierte Kaufempfehlungen), BODY AGENT (Passform + Silhouetten-Optimierung), TREND AGENT (Runway- und Social-Media-Trend-Monitoring)</p>
+  </div>
+
+  <h3>Warum Multi-Agent > Single-Agent</h3>
+
+  <div class="framework-grid">
+    <div class="framework-card warm">
+      <h4>Spezialisierung</h4>
+      <p>Farbtheorie erfordert anderes Fachwissen als Wetterintegration. Ein generalistisches LLM halluziniert bei Farbtyp-Bestimmung — ein Fine-tuned Color Agent mit Vision-Modell nicht.</p>
+    </div>
+    <div class="framework-card accent">
+      <h4>Erklärbarkeit</h4>
+      <p>Jeder Agent liefert seinen Reasoning-Beitrag. NutzerInnen verstehen: „Warum dieses Outfit?" — das größte Defizit aktueller Apps (Acloset: „nonsensical pairings").</p>
+    </div>
+    <div class="framework-card sage">
+      <h4>Conflict Resolution</h4>
+      <p>Reale Outfit-Wahl ist voller Zielkonflikte (Komfort vs. Professionalität, Farbe vs. Anlass). Ein Orchestrator löst diese transparent, statt sie zu ignorieren.</p>
+    </div>
+    <div class="framework-card rose">
+      <h4>Skalierbarkeit</h4>
+      <p>Neue Agenten (Trend, Sustainability, Body Type) können modular ergänzt werden, ohne die Kernarchitektur zu verändern — analog zu Digital War Rooms Agent-System.</p>
+    </div>
+  </div>
+
+  <h3>Potenzial-Bewertung nach Dimension</h3>
+
+  <div style="background: white; border: 1px solid var(--border); padding: 24px; margin: 20px 0;">
+    <div class="potential-meter">
+      <div class="meter-label">Technische Machbarkeit</div>
+      <div class="meter-bar"><div class="meter-fill" style="width: 85%; background: var(--sage);"></div></div>
+      <div class="meter-score" style="color: var(--sage);">85%</div>
+    </div>
+    <div class="potential-meter">
+      <div class="meter-label">Markt-Timing</div>
+      <div class="meter-bar"><div class="meter-fill" style="width: 92%; background: var(--warm);"></div></div>
+      <div class="meter-score" style="color: var(--warm-dark);">92%</div>
+    </div>
+    <div class="potential-meter">
+      <div class="meter-label">Moat-Potential</div>
+      <div class="meter-bar"><div class="meter-fill" style="width: 78%; background: var(--accent);"></div></div>
+      <div class="meter-score" style="color: var(--accent);">78%</div>
+    </div>
+    <div class="potential-meter">
+      <div class="meter-label">User Pain Severity</div>
+      <div class="meter-bar"><div class="meter-fill" style="width: 88%; background: var(--rose);"></div></div>
+      <div class="meter-score" style="color: var(--rose);">88%</div>
+    </div>
+    <div class="potential-meter">
+      <div class="meter-label">Monetarisierung</div>
+      <div class="meter-bar"><div class="meter-fill" style="width: 82%; background: var(--blue);"></div></div>
+      <div class="meter-score" style="color: var(--blue);">82%</div>
+    </div>
+  </div>
+
+  <p><strong>Technische Machbarkeit (85%):</strong> Vision-Modelle (CLIP, ViT) können Kleidung und Farben zuverlässig klassifizieren. LLMs verstehen Stilregeln und Kontext. Die Hauptherausforderung liegt in akkurater Farbtyp-Bestimmung via Selfie (Beleuchtungsvarianz) und realitätsnahem Virtual Try-On.</p>
+
+  <p><strong>Markt-Timing (92%):</strong> Der Markt wächst explosiv (47M → 85M NutzerInnen), aber kein Player hat bisher die Kerndimensionen integriert. Die TikTok-Welle der Seasonal Color Analysis hat Millionen von NutzerInnen sensibilisiert. AI-Agentic-Systeme sind technologisch gerade reif genug.</p>
+
+  <p><strong>Moat-Potential (78%):</strong> Der Moat liegt in Personalisierungsdaten: Je länger jemand das System nutzt, desto besser wird die Stilvorhersage. Aber: Wardrobe-Daten sind nicht per se defensible — ein funktionierendes Agent-Orchestrierungssystem und akkurate Farbanalyse sind schwerer zu kopieren.</p>
+</section>
+
+<div class="divider container"></div>
+
+<!-- SECTION 6 -->
+<section>
+  <span class="section-number">06 — Fazit</span>
+  <h2>Strategische Bewertung</h2>
+
+  <div class="verdict">
+    <h3>Gesamtbewertung: Hohes Potenzial mit klarem Architektur-Vorteil</h3>
+    <p>Der Fashion-AI-Markt 2026 gleicht dem Zustand der Geopolitik-OSINT-Tools vor 3 Jahren: Viele Einzellösungen, keine Integration. Ein Multi-Agent-System, das Farbwissenschaft, Stilpsychologie, Wardrobe-Optimierung und Kontextbewusstsein vereint, adressiert ein universelles Problem (jeder Mensch zieht sich jeden Tag an) mit einem technisch machbaren, aber schwer kopierbaren Ansatz. Die Heriot-Watt-Universität bestätigt: Digitale Wardrobe-Tools reduzieren nachweislich Überkonsum. Die psychologische Evidenz für Enclothed Cognition und Decision Fatigue ist solid. Der Markt ist bereit — die Technologie auch.</p>
+  </div>
+
+  <h3>Kritische Erfolgsfaktoren</h3>
+  <div class="framework-grid">
+    <div class="framework-card blue">
+      <h4>Onboarding < 3 Min</h4>
+      <p>Ein Selfie für Farbanalyse + 10 Fotos aus dem Kleiderschrank müssen ausreichen für den ersten Mehrwert. Wardrobe-Digitalisierung ist die größte Friktionshürde aller bisherigen Apps.</p>
+    </div>
+    <div class="framework-card warm">
+      <h4>Erklärbarkeit first</h4>
+      <p>Jeder Vorschlag braucht ein „Warum" — das ist der entscheidende Differentiator zu bestehenden Black-Box-AI-Stylisten. NutzerInnen wollen lernen, nicht nur folgen.</p>
+    </div>
+    <div class="framework-card sage">
+      <h4>Hybrid AI + Human</h4>
+      <p>Indyx zeigt: Human Stylists performen immer noch besser als Pure-AI-Lösungen. Ein Agent-System, das Stylist-Wissen kodifiziert und als Supervisor integriert, schlägt beide.</p>
+    </div>
+    <div class="framework-card rose">
+      <h4>Leichtgewichtige Agenten</h4>
+      <p>Context und Color Agent können mit Haiku-class Modellen laufen, nur der Orchestrator braucht Reasoning-Power. Token-Kosten müssen für Consumer-Preise tragbar sein.</p>
+    </div>
+  </div>
+
+  <div class="source-list">
+    <strong>Quellen & Referenzen</strong>
+    Adam, H. & Galinsky, A.D. (2012). Enclothed Cognition. Journal of Experimental Social Psychology.
+    · Horton, C.B., Adam, H. & Galinsky, A.D. (2023). Evaluating the Evidence for Enclothed Cognition: Z-Curve and Meta-Analyses. N=3,789.
+    · Schwartz, B. (2004). The Paradox of Choice.
+    · Iyengar, S.S. & Lepper, M.R. (2000). When Choice is Demotivating. JPSP.
+    · Baumeister, R.F. & Tierney, J. (2011). Willpower: Rediscovering the Greatest Human Strength.
+    · Jackson, C. (1980). Color Me Beautiful.
+    · Itten, J. (1961). Kunst der Farbe.
+    · MDPI Sustainability (2022). Everyday Creativity Practiced through a Capsule Wardrobe.
+    · McKinsey & Co. State of Fashion Technology Report 2026.
+    · Heriot-Watt University: Wardrobe App User Review Analysis (N≈6,000).
+    · Boyner / Dursun et al. (2025). AI-Powered Multi-Agent Fashion Assistant. EJRD.
+    · FashionM3 (2025). Multimodal, Multitask, and Multiround Fashion Assistant. arXiv.
+    · AMMR Pipeline (2025). Agentic Personalized Fashion Recommendation. arXiv.
+    · Klodsy Market Comparison (2026). Best AI Stylist Apps.
+    · Festinger, L. (1957). A Theory of Cognitive Dissonance.
+  </div>
+</section>
+
+<div style="height: 60px;"></div>
+
+</body>
+</html>

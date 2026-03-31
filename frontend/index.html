@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inventory Manager</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; background: #f6f7fb; color: #1f2937; }
+      .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+      .panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+      .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+      select, button { border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 10px; background: white; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+      .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; }
+      .img { width: 100%; height: 180px; object-fit: cover; border-radius: 8px; background: #f3f4f6; border: 1px solid #e5e7eb; }
+      .muted { color: #6b7280; font-size: 13px; }
+      .pill { display: inline-block; margin-right: 6px; margin-bottom: 6px; padding: 3px 8px; border-radius: 999px; border: 1px solid #e5e7eb; font-size: 12px; color: #374151; }
+      .title { margin: 0 0 6px 0; font-size: 18px; }
+      .actions { margin-top: 10px; display: flex; gap: 8px; align-items: center; }
+      .ok { color: #065f46; font-size: 13px; }
+      .err { color: #991b1b; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Inventory Datenbank</h1>
+      <div class="panel row">
+        <label>Kategorie:
+          <select id="categoryFilter">
+            <option value="all">Alle</option>
+            <option value="top">Top</option>
+            <option value="bottom">Bottom</option>
+            <option value="outer">Outer</option>
+            <option value="shoes">Shoes</option>
+            <option value="accessory">Accessory</option>
+          </select>
+        </label>
+        <label>Sortierung:
+          <select id="sortBy">
+            <option value="name_asc">Name (A-Z)</option>
+            <option value="name_desc">Name (Z-A)</option>
+            <option value="price_asc">Preis (aufsteigend)</option>
+            <option value="price_desc">Preis (absteigend)</option>
+            <option value="newest">Neueste zuerst</option>
+            <option value="oldest">Älteste zuerst</option>
+          </select>
+        </label>
+        <button id="reloadBtn">Neu laden</button>
+        <span id="status" class="muted"></span>
+      </div>
+      <div id="list" class="grid"></div>
+    </div>
+
+    <script>
+      // Set this in Vercel by inlining script before this block:
+      // window.__API_BASE__ = "https://your-railway-app.up.railway.app"
+      const API_BASE = window.__API_BASE__ || "";
+      const API = `${API_BASE}/v1/wardrobe/items`;
+      let allItems = [];
+
+      async function fetchItems() {
+        const status = document.getElementById("status");
+        status.textContent = "Lade...";
+        const res = await fetch(API);
+        if (!res.ok) {
+          status.textContent = "Fehler beim Laden";
+          return;
+        }
+        allItems = await res.json();
+        status.textContent = `${allItems.length} Items`;
+        render();
+      }
+
+      function applyFilterSort(items) {
+        const cat = document.getElementById("categoryFilter").value;
+        const sortBy = document.getElementById("sortBy").value;
+        let out = [...items];
+        if (cat !== "all") out = out.filter((i) => i.category === cat);
+        out.sort((a, b) => {
+          if (sortBy === "name_asc") return a.name.localeCompare(b.name);
+          if (sortBy === "name_desc") return b.name.localeCompare(a.name);
+          if (sortBy === "price_asc") return (a.purchase_price ?? 999999) - (b.purchase_price ?? 999999);
+          if (sortBy === "price_desc") return (b.purchase_price ?? -1) - (a.purchase_price ?? -1);
+          if (sortBy === "newest") return b.id - a.id;
+          if (sortBy === "oldest") return a.id - b.id;
+          return 0;
+        });
+        return out;
+      }
+
+      function render() {
+        const list = document.getElementById("list");
+        const rows = applyFilterSort(allItems);
+        list.innerHTML = "";
+        for (const item of rows) {
+          const card = document.createElement("div");
+          card.className = "card";
+          const imgUrl = item.image_url || "";
+          const tags = (item.style_tags || []).map((t) => `<span class="pill">${t}</span>`).join("");
+          card.innerHTML = `
+            <img class="img" src="${imgUrl}" alt="${item.name}" onerror="this.style.opacity='0.25'" />
+            <h3 class="title">${item.name}</h3>
+            <div class="muted">Kategorie: ${item.category} · Größe: ${item.size_label || "-"}</div>
+            <div class="muted">Marke: ${item.brand || "-"} · Material: ${item.material || "-"}</div>
+            <div class="muted">Preis: ${item.purchase_price ?? "-"} · Menge: ${item.quantity ?? 1}</div>
+            <div style="margin-top:8px;">${tags}</div>
+            <div class="actions">
+              <input type="file" accept="image/*" data-id="${item.id}" />
+              <button data-upload="${item.id}">Bild hochladen</button>
+              <span id="msg-${item.id}" class="muted"></span>
+            </div>
+          `;
+          list.appendChild(card);
+        }
+
+        for (const btn of document.querySelectorAll("button[data-upload]")) {
+          btn.addEventListener("click", async (e) => {
+            const id = e.target.getAttribute("data-upload");
+            const input = document.querySelector(`input[data-id='${id}']`);
+            const msg = document.getElementById(`msg-${id}`);
+            if (!input.files || !input.files[0]) {
+              msg.className = "err";
+              msg.textContent = "Bitte Datei wählen";
+              return;
+            }
+            const fd = new FormData();
+            fd.append("image", input.files[0]);
+            msg.className = "muted";
+            msg.textContent = "Upload...";
+            const res = await fetch(`${API_BASE}/v1/wardrobe/items/${id}/image`, { method: "POST", body: fd });
+            if (!res.ok) {
+              msg.className = "err";
+              msg.textContent = "Upload fehlgeschlagen";
+              return;
+            }
+            msg.className = "ok";
+            msg.textContent = "Gespeichert";
+            await fetchItems();
+          });
+        }
+      }
+
+      document.getElementById("categoryFilter").addEventListener("change", render);
+      document.getElementById("sortBy").addEventListener("change", render);
+      document.getElementById("reloadBtn").addEventListener("click", fetchItems);
+      fetchItems();
+    </script>
+  </body>
+</html>
