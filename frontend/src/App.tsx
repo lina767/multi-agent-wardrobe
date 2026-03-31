@@ -1,7 +1,16 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { api } from "./api";
-import type { ColorFamily, DresscodeLevel, Suggestion, WardrobeCategory, WardrobeItem, WardrobeItemCreate } from "./types";
+import type {
+  ColorFamily,
+  DresscodeLevel,
+  ProfileCheckinCreate,
+  Suggestion,
+  TemporalState,
+  WardrobeCategory,
+  WardrobeItem,
+  WardrobeItemCreate,
+} from "./types";
 
 const categories: WardrobeCategory[] = ["top", "bottom", "outer", "shoes", "accessory"];
 const dresscodes: DresscodeLevel[] = ["casual", "smart_casual", "business", "formal"];
@@ -16,6 +25,12 @@ const initialForm: WardrobeItemCreate = {
   is_available: true,
   style_tags: [],
   quantity: 1,
+};
+
+const initialBulkDefaults = {
+  category: "top" as WardrobeCategory,
+  formality: "casual" as DresscodeLevel,
+  color_family: "neutral" as ColorFamily,
 };
 
 function splitTags(value: string): string[] {
@@ -35,12 +50,26 @@ export function App() {
   const [styleTagsText, setStyleTagsText] = useState("");
   const [mood, setMood] = useState("focus");
   const [occasion, setOccasion] = useState("casual");
+  const [location, setLocation] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [colorAnalysis, setColorAnalysis] = useState<string | null>(null);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [bulkDefaults, setBulkDefaults] = useState(initialBulkDefaults);
+  const [uploadingBulk, setUploadingBulk] = useState(false);
+  const [bulkAnalysis, setBulkAnalysis] = useState<string | null>(null);
+  const [temporalState, setTemporalState] = useState<TemporalState | null>(null);
+  const [checkin, setCheckin] = useState<ProfileCheckinCreate>({
+    life_phase: "",
+    role_transition: "",
+    body_change_note: "",
+    fit_confidence: 0.6,
+    style_goals: [],
+  });
+  const [styleGoalsText, setStyleGoalsText] = useState("");
+  const [submittingCheckin, setSubmittingCheckin] = useState(false);
 
   const sortedItems = useMemo(
     () => [...items].sort((a, b) => a.id - b.id),
@@ -61,7 +90,21 @@ export function App() {
 
   useEffect(() => {
     void refreshItems();
+    void refreshTemporalState();
   }, []);
+
+  async function refreshTemporalState() {
+    try {
+      const state = await api.getProfileState();
+      if (state && typeof state === "object" && "features" in state && "dynamic_weights" in state) {
+        setTemporalState(state);
+      } else {
+        setTemporalState(null);
+      }
+    } catch {
+      // Keep the page usable when temporal state is not available yet.
+    }
+  }
 
   async function handleCreateItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -141,12 +184,40 @@ export function App() {
     }
   }
 
+  async function handleBulkUpload(files: FileList | null) {
+    if (!files || files.length === 0) {
+      return;
+    }
+    setUploadingBulk(true);
+    setError(null);
+    setBulkAnalysis(null);
+    try {
+      const response = await api.bulkUploadAndAnalyze(Array.from(files), bulkDefaults);
+      await refreshItems();
+      const graphEdges = response.analysis?.wardrobe_graph?.edges.length ?? 0;
+      const outfitPotential = response.analysis?.outfit_potential ?? 0;
+      const topGap = response.analysis?.gap_analysis?.[0]?.suggestion ?? "No gap suggestion available.";
+      setBulkAnalysis(
+        `${response.uploaded_count} items imported. Outfit potential: ${outfitPotential}. Compatibility links: ${graphEdges}. Next best add: ${topGap}`,
+      );
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Bulk upload failed.");
+    } finally {
+      setUploadingBulk(false);
+    }
+  }
+
   async function handleSuggestions() {
     setLoadingSuggestions(true);
     setError(null);
     try {
-      const response = await api.getSuggestions(mood, occasion);
+      const response = await api.getSuggestions(mood, occasion, location);
       setSuggestions(response.suggestions ?? []);
+      const factors = response.style_profile?.temporal_state?.state_factors ?? [];
+      if (factors.length > 0) {
+        setBulkAnalysis((prev) => prev ?? `Adaptive context: ${factors.join(" | ")}`);
+      }
+      await refreshTemporalState();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to fetch suggestions.");
     } finally {
@@ -154,14 +225,36 @@ export function App() {
     }
   }
 
-  async function handleSelfieUpload(file: File | null) {
+  async function handleCheckinSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmittingCheckin(true);
+    setError(null);
+    try {
+      const payload: ProfileCheckinCreate = {
+        schema_version: "v1",
+        life_phase: checkin.life_phase?.trim() || undefined,
+        role_transition: checkin.role_transition?.trim() || undefined,
+        body_change_note: checkin.body_change_note?.trim() || undefined,
+        fit_confidence: checkin.fit_confidence,
+        style_goals: splitTags(styleGoalsText),
+      };
+      await api.createProfileCheckin(payload);
+      await refreshTemporalState();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to save check-in.");
+    } finally {
+      setSubmittingCheckin(false);
+    }
+  }
+
+  async function handleFigurePhotoUpload(file: File | null) {
     if (!file) {
       return;
     }
     setLoadingAnalysis(true);
     setError(null);
     try {
-      const result = await api.analyzeSelfie(file);
+      const result = await api.analyzeFigurePhoto(file);
       setColorAnalysis(
         `${result.season} / ${result.undertone} / contrast ${result.contrast_level} / ${result.palette.join(", ")}`,
       );
@@ -184,19 +277,72 @@ export function App() {
       <section className="card">
         <h2>1. Color Profile</h2>
         <label className="field">
-          Upload selfie
+          Upload full-body photo
           <input
             type="file"
             accept="image/*"
-            onChange={(event) => void handleSelfieUpload(event.target.files?.[0] ?? null)}
+            onChange={(event) => void handleFigurePhotoUpload(event.target.files?.[0] ?? null)}
             disabled={loadingAnalysis}
           />
         </label>
-        <p>{loadingAnalysis ? "Analyzing..." : colorAnalysis ?? "No analysis yet."}</p>
+        <p>{loadingAnalysis ? "Analyzing full figure..." : colorAnalysis ?? "No analysis yet."}</p>
       </section>
 
       <section className="card">
-        <h2>2. Add Item</h2>
+        <h2>2. Context Check-in</h2>
+        <form className="grid" onSubmit={handleCheckinSubmit}>
+          <label className="field">
+            Life phase
+            <input
+              placeholder="e.g. student, professional, parent"
+              value={checkin.life_phase}
+              onChange={(event) => setCheckin((prev) => ({ ...prev, life_phase: event.target.value }))}
+            />
+          </label>
+          <label className="field">
+            Role transition
+            <input
+              placeholder="e.g. student -> professional"
+              value={checkin.role_transition}
+              onChange={(event) => setCheckin((prev) => ({ ...prev, role_transition: event.target.value }))}
+            />
+          </label>
+          <label className="field">
+            Fit confidence (0..1)
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.05}
+              value={checkin.fit_confidence ?? 0.6}
+              onChange={(event) => setCheckin((prev) => ({ ...prev, fit_confidence: Number(event.target.value) }))}
+            />
+          </label>
+          <label className="field">
+            Style goals (comma separated)
+            <input value={styleGoalsText} onChange={(event) => setStyleGoalsText(event.target.value)} />
+          </label>
+          <label className="field">
+            Body/Fit note
+            <input
+              placeholder="e.g. prefers looser fits this season"
+              value={checkin.body_change_note}
+              onChange={(event) => setCheckin((prev) => ({ ...prev, body_change_note: event.target.value }))}
+            />
+          </label>
+          <button type="submit" disabled={submittingCheckin}>
+            {submittingCheckin ? "Saving..." : "Save check-in"}
+          </button>
+        </form>
+        <p>
+          {temporalState?.features
+            ? `Current context: ${String(temporalState.features["life_phase"] ?? "unspecified")} · confidence ${temporalState.confidence.toFixed(2)}`
+            : "No temporal profile yet. Add a check-in to personalize recommendations over time."}
+        </p>
+      </section>
+
+      <section className="card">
+        <h2>3. Add Item</h2>
         <form className="grid" onSubmit={handleCreateItem}>
           <label className="field">
             Name
@@ -258,7 +404,67 @@ export function App() {
       </section>
 
       <section className="card">
-        <h2>3. Wardrobe</h2>
+        <h2>4. Bulk Upload + Analyze</h2>
+        <div className="row">
+          <label className="field inline">
+            Default category
+            <select
+              value={bulkDefaults.category}
+              onChange={(event) =>
+                setBulkDefaults((prev) => ({ ...prev, category: event.target.value as WardrobeCategory }))
+              }
+            >
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field inline">
+            Default formality
+            <select
+              value={bulkDefaults.formality}
+              onChange={(event) =>
+                setBulkDefaults((prev) => ({ ...prev, formality: event.target.value as DresscodeLevel }))
+              }
+            >
+              {dresscodes.map((dresscode) => (
+                <option key={dresscode} value={dresscode}>
+                  {dresscode}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field inline">
+            Default color
+            <select
+              value={bulkDefaults.color_family}
+              onChange={(event) => setBulkDefaults((prev) => ({ ...prev, color_family: event.target.value as ColorFamily }))}
+            >
+              {colors.map((color) => (
+                <option key={color} value={color}>
+                  {color}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="uploadButton">
+            {uploadingBulk ? "Uploading..." : "Upload all clothing photos"}
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(event) => void handleBulkUpload(event.target.files)}
+              disabled={uploadingBulk}
+            />
+          </label>
+        </div>
+        <p>{bulkAnalysis ?? "Select many photos at once. Filenames become item names automatically."}</p>
+      </section>
+
+      <section className="card">
+        <h2>5. Wardrobe</h2>
         {loadingItems ? <p>Loading wardrobe...</p> : null}
         {!loadingItems && sortedItems.length === 0 ? <p>No items yet. Add your first piece above.</p> : null}
         <div className="items">
@@ -334,7 +540,7 @@ export function App() {
       </section>
 
       <section className="card">
-        <h2>4. Suggestions</h2>
+        <h2>6. Suggestions</h2>
         <div className="row">
           <label className="field inline">
             Mood
@@ -355,11 +561,22 @@ export function App() {
               <option value="event">event</option>
             </select>
           </label>
+          <label className="field inline">
+            Location (optional)
+            <input
+              value={location}
+              onChange={(event) => setLocation(event.target.value)}
+              placeholder="e.g. Berlin,de"
+            />
+          </label>
           <button type="button" onClick={() => void handleSuggestions()} disabled={loadingSuggestions}>
             {loadingSuggestions ? "Generating..." : "Generate top outfits"}
           </button>
         </div>
         {suggestions.length === 0 ? <p>No suggestions loaded yet.</p> : null}
+        {temporalState?.state_factors?.length ? (
+          <p>Adaptive factors: {temporalState.state_factors.join(" | ")}</p>
+        ) : null}
         {suggestions.map((suggestion) => (
           <article key={suggestion.id} className="suggestion">
             <h3>{suggestion.item_names.join(" + ")}</h3>

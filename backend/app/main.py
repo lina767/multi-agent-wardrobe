@@ -11,7 +11,7 @@ from app.api.routes import feedback, health, recommendations, wardrobe
 from app.bootstrap import ensure_default_user
 from app.config import settings
 from app.db.session import init_db
-from app.db.migrate import ensure_agent_schema, ensure_inventory_schema
+from app.db.migrate import ensure_agent_schema, ensure_inventory_schema, ensure_temporal_schema
 from app.logging_config import configure_logging
 from app.routers import analytics, profile, suggestions
 
@@ -29,6 +29,7 @@ async def lifespan(app: FastAPI):
     try:
         ensure_inventory_schema(db)
         ensure_agent_schema(db)
+        ensure_temporal_schema(db)
         ensure_default_user(db)
         logger.info("application_startup", extra={"event": "startup", "user": "default_user"})
     finally:

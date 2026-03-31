@@ -7,6 +7,7 @@ from app.api.schemas import FeedbackCreate, FeedbackRead
 from app.bootstrap import get_default_user_id
 from app.db.models import FeedbackEvent
 from app.db.session import get_db
+from app.services.temporal_intelligence import record_style_signal
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
@@ -21,6 +22,18 @@ def create_feedback(body: FeedbackCreate, db: Session = Depends(get_db)) -> Feed
         comment=body.comment,
     )
     db.add(row)
+    record_style_signal(
+        db,
+        user_id=uid,
+        signal_type="manual_feedback",
+        source="feedback_api",
+        weight=min(1.0, max(0.2, body.rating / 5.0)),
+        payload={
+            "item_ids": body.suggestion_item_ids,
+            "rating": body.rating,
+            "comment": body.comment,
+        },
+    )
     db.commit()
     db.refresh(row)
     return FeedbackRead.model_validate(row)

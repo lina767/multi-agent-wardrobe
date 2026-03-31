@@ -12,9 +12,38 @@ from app.db.session import get_db
 from app.models.profile import OutfitLog, OutfitSuggestion, UserProfile
 from app.domain.enums import EventType, MoodEnergy
 from app.services.recommendation_service import build_recommendations
+from app.services.temporal_intelligence import get_current_temporal_state, record_style_signal
 from app.services.weather import WeatherService
 
 router = APIRouter(tags=["suggestions"])
+
+
+def _palette_bias_from_profile(profile: UserProfile | None) -> list[str]:
+    if not profile or not profile.color_palette:
+        return []
+    buckets: set[str] = set()
+    for value in profile.color_palette:
+        if not isinstance(value, str) or not value.startswith("#") or len(value) != 7:
+            continue
+        try:
+            r = int(value[1:3], 16)
+            g = int(value[3:5], 16)
+            b = int(value[5:7], 16)
+        except ValueError:
+            continue
+        max_c = max(r, g, b)
+        min_c = min(r, g, b)
+        if max_c - min_c < 20:
+            buckets.add("neutral")
+        elif r > b + 20:
+            buckets.add("warm")
+        elif b > r + 20:
+            buckets.add("cool")
+        elif max_c > 170:
+            buckets.add("pastel")
+        else:
+            buckets.add("earth")
+    return sorted(buckets)
 
 
 def _occasion_to_event(occasion: str) -> EventType:
@@ -40,10 +69,7 @@ async def get_suggestions(
     if not rows:
         raise HTTPException(status_code=400, detail="No wardrobe items found. Add items first.")
     profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
-    palette_bias = []
-    if profile and profile.color_palette:
-        # Recommendation API expects symbolic palette families, not hex values.
-        palette_bias = [c for c in ("neutral", "warm", "cool", "bold", "earth", "pastel") if any(c in str(v).lower() for v in profile.color_palette)]
+    palette_bias = _palette_bias_from_profile(profile)
 
     mood_value = mood.lower()
     try:
@@ -71,6 +97,7 @@ async def get_suggestions(
         max_candidates_to_rank=120,
     )
     output = build_recommendations(db, user_id, req)
+    temporal_state = get_current_temporal_state(db, user_id=user_id)
     saved = []
     for suggestion in output.suggestions:
         partials: dict[str, float] = {}
@@ -113,8 +140,21 @@ async def get_suggestions(
             "occasion": occasion.lower(),
             "weather": weather_data,
         },
-        "style_profile": {},
-        "color_profile": {},
+        "style_profile": {
+            "temporal_state": {
+                "life_phase": temporal_state.get("life_phase"),
+                "dominant_occasion": temporal_state.get("dominant_occasion"),
+                "fit_confidence": temporal_state.get("fit_confidence"),
+                "state_factors": temporal_state.get("state_factors", []),
+            },
+            "dynamic_weights": temporal_state.get("dynamic_weights", {}),
+        },
+        "color_profile": {
+            "season": profile.color_season if profile else None,
+            "undertone": profile.undertone if profile else None,
+            "contrast_level": profile.contrast_level if profile else None,
+            "palette": profile.color_palette if profile else None,
+        },
         "wardrobe": {
             "outfit_potential": len(output.suggestions),
             "capsule_suggestions": [],
@@ -134,6 +174,19 @@ def log_outfit(body: dict, db: Session = Depends(get_db)) -> dict:
         context_json=body,
     )
     db.add(model)
+    record_style_signal(
+        db,
+        user_id=user_id,
+        signal_type="outfit_worn",
+        source="outfit_log",
+        weight=0.85,
+        payload={
+            "item_ids": item_ids,
+            "occasion": body.get("occasion"),
+            "mood": body.get("mood"),
+            "style_goals": body.get("style_goals", []),
+        },
+    )
     db.commit()
     db.refresh(model)
     return {"id": model.id, "status": "logged"}
@@ -152,5 +205,19 @@ def suggestion_feedback(suggestion_id: int, body: dict, db: Session = Depends(ge
     suggestion.accepted = bool(body.get("accepted")) if body.get("accepted") is not None else suggestion.accepted
     if body.get("rating") is not None:
         suggestion.mood_score = max(0.0, min(1.0, float(body["rating"]) / 5.0))
+    record_style_signal(
+        db,
+        user_id=user_id,
+        signal_type="suggestion_feedback",
+        source="suggestions_api",
+        weight=max(0.2, float(body.get("rating", 3)) / 5.0),
+        payload={
+            "suggestion_id": suggestion_id,
+            "accepted": body.get("accepted"),
+            "rating": body.get("rating"),
+            "item_ids": suggestion.item_ids,
+            "occasion": body.get("occasion"),
+        },
+    )
     db.commit()
     return {"status": "updated"}

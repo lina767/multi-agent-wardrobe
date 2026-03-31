@@ -134,6 +134,92 @@ def test_upload_inventory_image(client: TestClient) -> None:
     assert body["image_url"].startswith("/media/uploads/")
 
 
+def test_bulk_upload_and_analysis(client: TestClient) -> None:
+    files = [
+        ("images", ("black_tee.png", io.BytesIO(b"fakepngdata1"), "image/png")),
+        ("images", ("blue_jeans.png", io.BytesIO(b"fakepngdata2"), "image/png")),
+        ("images", ("white_sneakers.png", io.BytesIO(b"fakepngdata3"), "image/png")),
+    ]
+    data = {"analyze": "true", "category": "top", "formality": "casual", "color_family": "neutral"}
+    response = client.post("/api/v1/wardrobe/bulk-upload", files=files, data=data)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["uploaded_count"] == 3
+    assert len(body["items"]) == 3
+    assert body["analysis"] is not None
+    assert "outfit_potential" in body["analysis"]
+
+
+def test_profile_checkin_and_state(client: TestClient) -> None:
+    create = client.post(
+        "/api/v1/profile/checkins",
+        json={
+            "schema_version": "v1",
+            "life_phase": "professional",
+            "role_transition": "student -> professional",
+            "fit_confidence": 0.4,
+            "style_goals": ["minimalist", "business-casual"],
+        },
+    )
+    assert create.status_code == 200
+    payload = create.json()
+    assert payload["schema_version"] == "v1"
+    assert payload["life_phase"] == "professional"
+
+    listing = client.get("/api/v1/profile/checkins")
+    assert listing.status_code == 200
+    assert len(listing.json()) >= 1
+
+    state = client.get("/api/v1/profile/state")
+    assert state.status_code == 200
+    body = state.json()
+    assert body["state_key"] == "current"
+    assert "dynamic_weights" in body
+    assert 0 <= body["confidence"] <= 1
+
+
+def test_profile_state_without_checkins_still_available(client: TestClient) -> None:
+    response = client.get("/api/v1/profile/state")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["state_key"] == "current"
+    assert "features" in payload
+    assert "dynamic_weights" in payload
+
+
+def test_suggestions_include_temporal_style_profile(client: TestClient) -> None:
+    _seed_wardrobe(client)
+    checkin = client.post(
+        "/api/v1/profile/checkins",
+        json={
+            "schema_version": "v1",
+            "life_phase": "career-shift",
+            "style_goals": ["polished", "comfort"],
+            "fit_confidence": 0.5,
+        },
+    )
+    assert checkin.status_code == 200
+    response = client.get("/api/v1/suggestions?mood=focus&occasion=work")
+    assert response.status_code == 200
+    body = response.json()
+    assert "style_profile" in body
+    assert "temporal_state" in body["style_profile"]
+    assert "dynamic_weights" in body["style_profile"]
+    weights = body["style_profile"]["dynamic_weights"]
+    assert "context_fit" in weights
+    assert 0 <= float(weights["context_fit"]) <= 1
+
+
+def test_suggestions_include_temporal_state_when_no_checkin(client: TestClient) -> None:
+    _seed_wardrobe(client)
+    response = client.get("/api/v1/suggestions?mood=focus&occasion=casual")
+    assert response.status_code == 200
+    body = response.json()
+    temporal = body["style_profile"]["temporal_state"]
+    assert "life_phase" in temporal
+    assert "state_factors" in temporal
+
+
 def test_recommendation_pipeline_integration_deterministic_and_evidence(client: TestClient) -> None:
     items = [
         ("White shirt", "top", "business", ["neutral"], ["classic"]),
@@ -178,4 +264,25 @@ def test_recommendation_pipeline_integration_deterministic_and_evidence(client: 
     assert [s["total_score"] for s in data1] == [s["total_score"] for s in data2]
     for suggestion in data1:
         assert len(suggestion["evidence_tags"]) >= 2
+        trace_types = [entry.get("type") for entry in suggestion["decision_trace"] if isinstance(entry, dict)]
+        assert "agent_contract" in trace_types
     assert any(any(tag["evidence_id"] == "enclothed_cognition" for tag in s["evidence_tags"]) for s in data1)
+
+
+def test_profile_color_feedback_roundtrip(client: TestClient) -> None:
+    body = {
+        "source": "user",
+        "predicted_season": "true_summer",
+        "predicted_undertone": "cool",
+        "predicted_contrast_level": "medium",
+        "predicted_confidence": 0.72,
+        "corrected_season": "cool_winter",
+        "corrected_undertone": "cool",
+        "corrected_contrast_level": "high",
+        "note": "I wear deep cool shades best.",
+    }
+    response = client.post("/api/v1/profile/color-feedback", json=body)
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["predicted_season"] == "true_summer"
+    assert payload["corrected_season"] == "cool_winter"

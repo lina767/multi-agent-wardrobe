@@ -1,4 +1,15 @@
-import type { Suggestion, WardrobeItem, WardrobeItemCreate } from "./types";
+import type {
+  BulkUploadResponse,
+  ColorFamily,
+  DresscodeLevel,
+  ProfileCheckinCreate,
+  ProfileCheckinRead,
+  Suggestion,
+  TemporalState,
+  WardrobeCategory,
+  WardrobeItem,
+  WardrobeItemCreate,
+} from "./types";
 
 const API_BASE = (window as Window & { __API_BASE__?: string }).__API_BASE__ ?? "";
 const API_PREFIX = `${API_BASE}/api/v1`;
@@ -45,13 +56,57 @@ export const api = {
       body: formData,
     });
   },
-  getSuggestions: (mood: string, occasion: string) =>
-    request<{ suggestions: Suggestion[] }>(
-      `/suggestions?mood=${encodeURIComponent(mood)}&occasion=${encodeURIComponent(occasion)}`,
-    ),
-  analyzeSelfie: (file: File) => {
+  bulkUploadAndAnalyze: (
+    files: File[],
+    defaults: { category: WardrobeCategory; formality: DresscodeLevel; color_family: ColorFamily },
+  ) => {
     const formData = new FormData();
-    formData.append("selfie", file);
+    for (const file of files) {
+      formData.append("images", file);
+    }
+    formData.append("analyze", "true");
+    formData.append("category", defaults.category);
+    formData.append("formality", defaults.formality);
+    formData.append("color_family", defaults.color_family);
+    return request<BulkUploadResponse>("/wardrobe/bulk-upload", {
+      method: "POST",
+      body: formData,
+    });
+  },
+  getSuggestions: (mood: string, occasion: string, location?: string) =>
+    request<{
+      suggestions: Suggestion[];
+      style_profile?: {
+        temporal_state?: {
+          life_phase?: string;
+          dominant_occasion?: string;
+          fit_confidence?: number;
+          state_factors?: string[];
+        };
+        dynamic_weights?: Record<string, number>;
+      };
+    }>(
+      (() => {
+      const query = new URLSearchParams({
+        mood,
+        occasion,
+      });
+      if (location?.trim()) {
+        query.set("location", location.trim());
+      }
+      return `/suggestions?${query.toString()}`;
+      })(),
+    ),
+  createProfileCheckin: (payload: ProfileCheckinCreate) =>
+    request<ProfileCheckinRead>("/profile/checkins", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  getProfileState: () => request<TemporalState>("/profile/state"),
+  analyzeFigurePhoto: (file: File) => {
+    const formData = new FormData();
+    formData.append("photo", file);
     return request<{ season: string; undertone: string; contrast_level: string; palette: string[] }>(
       "/profile/color-analysis",
       {

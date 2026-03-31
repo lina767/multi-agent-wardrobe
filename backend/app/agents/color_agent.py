@@ -6,6 +6,7 @@ import base64
 import json
 from io import BytesIO
 from pathlib import Path
+from typing import Any
 from urllib.request import Request, urlopen
 
 from app.agents.constants import SEASON_PALETTES, SEASON_TYPES
@@ -21,6 +22,36 @@ except Exception:  # pragma: no cover
 
 
 class ColorAgent:
+    def __init__(self) -> None:
+        self._backend = self._resolve_backend(settings.color_agent_backend)
+
+    @staticmethod
+    def _resolve_backend(name: str) -> str:
+        backend = (name or "anthropic_vision").strip().lower()
+        if backend in {"fine_tuned", "anthropic_vision", "heuristic"}:
+            return backend
+        return "anthropic_vision"
+
+    def _normalize_profile(self, profile: dict[str, Any], backend: str) -> dict[str, Any]:
+        season = str(profile.get("season") or "true_summer")
+        if season not in SEASON_TYPES:
+            season = "true_summer"
+        palette = profile.get("palette")
+        if not isinstance(palette, list):
+            palette = []
+        clean_palette = [str(c).upper() for c in palette if isinstance(c, str) and c.startswith("#")][:5]
+        if not clean_palette:
+            clean_palette = list(SEASON_PALETTES.get(season, SEASON_PALETTES["true_summer"]))
+        confidence_raw = profile.get("confidence")
+        confidence = 0.6 if not isinstance(confidence_raw, (int, float)) else max(0.0, min(1.0, float(confidence_raw)))
+        return {
+            "season": season,
+            "undertone": str(profile.get("undertone") or "cool"),
+            "contrast_level": str(profile.get("contrast_level") or "medium"),
+            "palette": clean_palette,
+            "confidence": round(confidence, 3),
+            "backend": backend,
+        }
 
     def evaluate(
         self,
@@ -47,19 +78,37 @@ class ColorAgent:
         )
 
     async def analyze_selfie(self, selfie_bytes: bytes) -> dict:
-        if not settings.anthropic_api_key:
-            return self._fallback_profile()
+        profile = self._fallback_profile()
         try:
-            return self._call_claude_vision(selfie_bytes)
+            if self._backend == "fine_tuned":
+                profile = self._call_fine_tuned_vision(selfie_bytes)
+            elif self._backend == "heuristic":
+                profile = self._heuristic_profile(selfie_bytes)
+            else:
+                profile = self._call_claude_vision(selfie_bytes)
         except Exception:
-            return self._fallback_profile()
+            profile = self._fallback_profile()
+
+        profile = self._normalize_profile(profile, self._backend)
+        if profile["confidence"] < settings.color_profile_min_confidence:
+            fallback = self._normalize_profile(self._fallback_profile(), "heuristic")
+            fallback["used_fallback"] = True
+            fallback["fallback_reason"] = "low_confidence"
+            fallback["primary_backend"] = profile["backend"]
+            return fallback
+
+        if settings.color_agent_shadow_mode:
+            profile["shadow"] = self._run_shadow_profile(selfie_bytes, primary_backend=profile["backend"])
+        return profile
 
     def _call_claude_vision(self, selfie_bytes: bytes) -> dict:
+        if not settings.anthropic_api_key:
+            return self._fallback_profile()
         prompt = (
             "You are a color analyst. Use the 12-season system based on hue undertone (warm/cool), "
             "value contrast (light/deep), and chroma (clear/muted). "
             f"Allowed seasons: {', '.join(SEASON_TYPES)}. "
-            "Return strict JSON with keys: season, undertone, contrast_level, palette (5 hex colors)."
+            "Return strict JSON with keys: season, undertone, contrast_level, palette (5 hex colors), confidence (0..1)."
         )
         body = {
             "model": settings.agent_color_model,
@@ -101,6 +150,7 @@ class ColorAgent:
             "undertone": parsed.get("undertone", "cool"),
             "contrast_level": parsed.get("contrast_level", "medium"),
             "palette": parsed.get("palette") or SEASON_PALETTES.get(season, SEASON_PALETTES["true_summer"]),
+            "confidence": parsed.get("confidence", 0.72),
         }
 
     def _fallback_profile(self) -> dict:
@@ -109,7 +159,59 @@ class ColorAgent:
             "undertone": "cool",
             "contrast_level": "medium",
             "palette": SEASON_PALETTES["true_summer"],
+            "confidence": 0.58,
         }
+
+    def _heuristic_profile(self, selfie_bytes: bytes) -> dict:
+        dominant = self._dominant_hex_from_bytes(selfie_bytes) or "#A1A6B8"
+        r = int(dominant[1:3], 16)
+        b = int(dominant[5:7], 16)
+        cool_hint = b >= r
+        season = "true_summer" if cool_hint else "soft_autumn"
+        return {
+            "season": season,
+            "undertone": "cool" if cool_hint else "warm",
+            "contrast_level": "medium",
+            "palette": SEASON_PALETTES.get(season, SEASON_PALETTES["true_summer"]),
+            "confidence": 0.62,
+        }
+
+    def _call_fine_tuned_vision(self, selfie_bytes: bytes) -> dict:
+        endpoint = settings.color_fine_tuned_endpoint
+        if not endpoint:
+            return self._heuristic_profile(selfie_bytes)
+        body = {"image_b64": base64.b64encode(selfie_bytes).decode("utf-8")}
+        request = Request(
+            endpoint,
+            data=json.dumps(body).encode("utf-8"),
+            headers={"content-type": "application/json"},
+            method="POST",
+        )
+        with urlopen(request, timeout=15) as response:  # nosec B310
+            payload = json.loads(response.read().decode("utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("Invalid fine-tuned payload")
+        return payload
+
+    def _run_shadow_profile(self, selfie_bytes: bytes, primary_backend: str) -> dict[str, Any]:
+        shadow_backend = "anthropic_vision" if primary_backend != "anthropic_vision" else "heuristic"
+        try:
+            if shadow_backend == "anthropic_vision":
+                shadow = self._normalize_profile(self._call_claude_vision(selfie_bytes), shadow_backend)
+            else:
+                shadow = self._normalize_profile(self._heuristic_profile(selfie_bytes), shadow_backend)
+            return {"backend": shadow_backend, "season": shadow["season"], "confidence": shadow["confidence"]}
+        except Exception:
+            return {"backend": shadow_backend, "status": "failed"}
+
+    def _dominant_hex_from_bytes(self, image_bytes: bytes) -> str | None:
+        if not Image:
+            return None
+        try:
+            with Image.open(BytesIO(image_bytes)) as img:
+                return self._dominant_hex_from_clusters(img)
+        except Exception:
+            return None
 
     def _dominant_item_hex(self, item: dict) -> str:
         image_path = item.get("image_path")

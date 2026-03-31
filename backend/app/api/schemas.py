@@ -151,3 +151,72 @@ class FeedbackRead(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     version: str = "v1"
+
+
+# --- Temporal style intelligence ---
+
+
+class ProfileCheckinCreate(BaseModel):
+    schema_version: str = Field(default="v1", pattern="^v[0-9]+$")
+    life_phase: str | None = Field(default=None, max_length=80)
+    role_transition: str | None = Field(default=None, max_length=120)
+    body_change_note: str | None = None
+    fit_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    style_goals: list[str] = Field(default_factory=list, max_length=12)
+    context_weights: dict[str, float] | None = None
+    effective_from: datetime | None = None
+
+
+class ProfileCheckinRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    schema_version: str
+    life_phase: str | None = None
+    role_transition: str | None = None
+    body_change_note: str | None = None
+    fit_confidence: float | None = None
+    style_goals_json: list[str]
+    context_weights_json: dict[str, float] | None = None
+    effective_from: datetime
+    created_at: datetime
+
+
+class TemporalStateRead(BaseModel):
+    user_id: int
+    state_key: str
+    features: dict[str, Any]
+    dynamic_weights: dict[str, float]
+    state_factors: list[str] = Field(default_factory=list)
+    confidence: float
+    updated_at: datetime
+
+
+class ColorProfileFeedbackCreate(BaseModel):
+    source: str = Field(default="user", max_length=64)
+    predicted_season: str = Field(..., min_length=3, max_length=32)
+    predicted_undertone: str | None = Field(default=None, max_length=16)
+    predicted_contrast_level: str | None = Field(default=None, max_length=16)
+    predicted_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    corrected_season: str | None = Field(default=None, max_length=32)
+    corrected_undertone: str | None = Field(default=None, max_length=16)
+    corrected_contrast_level: str | None = Field(default=None, max_length=16)
+    note: str | None = None
+
+
+class ColorProfileFeedbackRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    source: str
+    predicted_season: str
+    predicted_undertone: str | None = None
+    predicted_contrast_level: str | None = None
+    predicted_confidence: float | None = None
+    corrected_season: str | None = None
+    corrected_undertone: str | None = None
+    corrected_contrast_level: str | None = None
+    note: str | None = None
+    created_at: datetime

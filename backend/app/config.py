@@ -14,9 +14,13 @@ class Settings(BaseSettings):
     supabase_service_key: str | None = None
     supabase_bucket: str = "wardrobe-images"
     anthropic_api_key: str | None = None
-    openweather_api_key: str | None = None
+    weather_api_key: str | None = None
     agent_color_model: str = "claude-sonnet-4-20250514"
     agent_reasoning_model: str = "claude-haiku-4-5-20251001"
+    color_agent_backend: str = "anthropic_vision"  # anthropic_vision | fine_tuned | heuristic
+    color_fine_tuned_endpoint: str | None = None
+    color_profile_min_confidence: float = 0.65
+    color_agent_shadow_mode: bool = False
 
 
 settings = Settings()

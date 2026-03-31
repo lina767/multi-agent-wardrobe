@@ -22,12 +22,12 @@ class WeatherService:
         }
 
     async def fetch_current(self, location: str) -> dict:
-        if not settings.openweather_api_key:
+        if not settings.weather_api_key:
             return self._fallback(location)
         q = quote_plus(location)
         url = (
             "https://api.openweathermap.org/data/2.5/weather"
-            f"?q={q}&appid={settings.openweather_api_key}&units=metric"
+            f"?q={q}&appid={settings.weather_api_key}&units=metric"
         )
         try:
             with urlopen(url, timeout=4) as response:  # nosec B310
@@ -49,7 +49,7 @@ class WeatherService:
                 # 5-day forecast endpoint provides precipitation probability (pop).
                 forecast_url = (
                     "https://api.openweathermap.org/data/2.5/forecast"
-                    f"?lat={lat}&lon={lon}&appid={settings.openweather_api_key}&units=metric"
+                    f"?lat={lat}&lon={lon}&appid={settings.weather_api_key}&units=metric"
                 )
                 with urlopen(forecast_url, timeout=4) as response:  # nosec B310
                     forecast_payload = json.loads(response.read().decode("utf-8"))
@@ -68,7 +68,7 @@ class WeatherService:
                 # UVI from current weather "one call" endpoint.
                 uvi_url = (
                     "https://api.openweathermap.org/data/3.0/onecall"
-                    f"?lat={lat}&lon={lon}&exclude=minutely,hourly,daily,alerts&appid={settings.openweather_api_key}&units=metric"
+                    f"?lat={lat}&lon={lon}&exclude=minutely,hourly,daily,alerts&appid={settings.weather_api_key}&units=metric"
                 )
                 with urlopen(uvi_url, timeout=4) as response:  # nosec B310
                     onecall_payload = json.loads(response.read().decode("utf-8"))

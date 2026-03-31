@@ -1,10 +1,16 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.schemas import WardrobeItemCreate, WardrobeItemRead, WardrobeItemUpdate
+from app.agents.wardrobe_agent import WardrobeAgent
 from app.bootstrap import get_default_user_id
 from app.db.models import WardrobeItem
 from app.db.session import get_db
+from app.domain.enums import ColorFamily, DresscodeLevel, WardrobeCategory
+from app.models.profile import UserProfile
+from app.services.temporal_intelligence import record_style_signal
 from app.storage import delete_image, resolve_image_url, upload_image
 
 router = APIRouter(prefix="/wardrobe", tags=["wardrobe"])
@@ -108,6 +114,103 @@ async def upload_item_image(
     db.commit()
     db.refresh(row)
     return _serialize_row(row)
+
+
+@router.post("/bulk-upload")
+async def bulk_upload_items(
+    images: list[UploadFile] = File(...),
+    analyze: bool = Form(True),
+    category: str = Form("top"),
+    formality: str = Form("casual"),
+    color_family: str = Form("neutral"),
+    db: Session = Depends(get_db),
+) -> dict:
+    uid = get_default_user_id(db)
+    if not images:
+        raise HTTPException(status_code=400, detail="No images provided")
+    try:
+        parsed_category = WardrobeCategory(category).value
+        parsed_formality = DresscodeLevel(formality).value
+        parsed_color = ColorFamily(color_family).value
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid bulk-upload defaults") from exc
+
+    created_rows: list[WardrobeItem] = []
+    for image in images:
+        if not image.filename:
+            raise HTTPException(status_code=400, detail="Missing filename")
+        ext = image.filename.split(".")[-1].lower() if "." in image.filename else ""
+        if ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(status_code=400, detail=f"Unsupported image type: {ext}")
+
+        display_name = Path(image.filename).stem.replace("_", " ").replace("-", " ").strip().title()
+        if not display_name:
+            display_name = "Imported Item"
+
+        row = WardrobeItem(
+            user_id=uid,
+            name=display_name,
+            category=parsed_category,
+            color_families_json=[parsed_color],
+            formality=parsed_formality,
+            season_tags_json=[],
+            is_available=True,
+            style_tags_json=[],
+            quantity=1,
+        )
+        db.add(row)
+        db.flush()
+
+        payload = await image.read()
+        try:
+            image_ref = upload_image(row.id, payload, ext)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        row.image_path = image_ref
+        created_rows.append(row)
+
+    db.commit()
+    for row in created_rows:
+        db.refresh(row)
+
+    analysis: dict | None = None
+    if analyze:
+        all_rows = db.query(WardrobeItem).filter(WardrobeItem.user_id == uid).all()
+        profile = db.query(UserProfile).filter(UserProfile.user_id == uid).first()
+        items = [
+            {
+                "id": r.id,
+                "name": r.name,
+                "category": r.category,
+                "color_families": list(r.color_families_json or []),
+                "style_tags": list(r.style_tags_json or []),
+                "season_tags": list(r.season_tags_json or []),
+                "is_available": r.is_available,
+            }
+            for r in all_rows
+        ]
+        color_profile = {"palette": profile.color_palette} if profile and profile.color_palette else None
+        analysis = WardrobeAgent().analyze_wardrobe(items, color_profile=color_profile)
+    record_style_signal(
+        db,
+        user_id=uid,
+        signal_type="wardrobe_upload",
+        source="bulk_upload",
+        weight=0.7,
+        payload={
+            "uploaded_count": len(created_rows),
+            "category": parsed_category,
+            "formality": parsed_formality,
+            "style_goals": [],
+        },
+    )
+    db.commit()
+
+    return {
+        "uploaded_count": len(created_rows),
+        "items": [_serialize_row(row) for row in created_rows],
+        "analysis": analysis,
+    }
 
 
 def _serialize_row(row: WardrobeItem) -> WardrobeItemRead:

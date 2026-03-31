@@ -67,3 +67,103 @@ def ensure_agent_schema(db: Session) -> None:
                 )
             )
     db.commit()
+
+
+def ensure_temporal_schema(db: Session) -> None:
+    db.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS user_checkins (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                schema_version TEXT DEFAULT 'v1',
+                life_phase TEXT,
+                role_transition TEXT,
+                body_change_note TEXT,
+                fit_confidence REAL,
+                style_goals_json JSON,
+                context_weights_json JSON,
+                effective_from DATETIME,
+                created_at DATETIME
+            )
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS color_feedback_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                source TEXT DEFAULT 'user',
+                predicted_season TEXT NOT NULL,
+                predicted_undertone TEXT,
+                predicted_contrast_level TEXT,
+                predicted_confidence REAL,
+                corrected_season TEXT,
+                corrected_undertone TEXT,
+                corrected_contrast_level TEXT,
+                note TEXT,
+                created_at DATETIME
+            )
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS user_state_timeline (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                state_key TEXT DEFAULT 'current',
+                features_json JSON,
+                source_signal_ids_json JSON,
+                confidence REAL DEFAULT 0.5,
+                created_at DATETIME
+            )
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS preference_embeddings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                window_days INTEGER DEFAULT 30,
+                embedding_json JSON,
+                stability_score REAL DEFAULT 0.0,
+                updated_at DATETIME
+            )
+            """
+        )
+    )
+    db.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS style_signal_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                signal_type TEXT NOT NULL,
+                source TEXT DEFAULT 'system',
+                payload_json JSON,
+                weight REAL DEFAULT 0.5,
+                occurred_at DATETIME
+            )
+            """
+        )
+    )
+    # Backfill a baseline state row for users without history.
+    db.execute(
+        text(
+            """
+            INSERT INTO user_state_timeline (user_id, state_key, features_json, source_signal_ids_json, confidence, created_at)
+            SELECT u.id, 'baseline', json('{}'), json('[]'), 0.3, CURRENT_TIMESTAMP
+            FROM users u
+            WHERE NOT EXISTS (
+                SELECT 1 FROM user_state_timeline s WHERE s.user_id = u.id
+            )
+            """
+        )
+    )
+    db.commit()

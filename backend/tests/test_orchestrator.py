@@ -38,6 +38,34 @@ def test_home_weights_differ_from_meeting():
     assert isinstance(t_home, float)
 
 
+def test_merge_applies_weight_overrides():
+    orch = OrchestratorAgent()
+    results = [
+        _r("color", harmony=0.1),
+        _r("style", style_fit=0.1),
+        _r("wardrobe", wardrobe_coherence=0.1),
+        _r("context", context_fit=1.0),
+    ]
+    baseline, _, _, _, _ = orch.merge(results, EventType.HOME)
+    boosted, _, _, _, _ = orch.merge(
+        results,
+        EventType.HOME,
+        weight_overrides={"harmony": 0.05, "style_fit": 0.05, "wardrobe_coherence": 0.1, "context_fit": 0.8},
+    )
+    assert boosted > baseline
+
+
+def test_merge_normalizes_invalid_weight_overrides():
+    orch = OrchestratorAgent()
+    results = [_r("color", harmony=1.0)]
+    total, _, _, _, _ = orch.merge(
+        results,
+        EventType.HOME,
+        weight_overrides={"harmony": 4.0, "style_fit": -2.0, "context_fit": 0.0},
+    )
+    assert 0.0 <= total <= 1.0
+
+
 def test_supervise_falls_back_without_api_key():
     orch = OrchestratorAgent()
     out = asyncio.run(

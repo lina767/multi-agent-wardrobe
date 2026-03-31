@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.agents.color_agent import ColorAgent
+from app.agents.contracts import normalize_result_contract
 from app.agents.context_agent import ContextAgent
 from app.agents.orchestrator import OrchestratorAgent
 from app.agents.style_agent import StyleAgent
@@ -25,6 +26,7 @@ from app.domain.entities import OutfitCandidateDTO, RecommendationPipelineInput,
 from app.domain.enums import ColorFamily, DresscodeLevel, WardrobeCategory
 from app.evidence.rules import EvidenceRuleEngine
 from app.db.models import FeedbackEvent, OutfitLog, WardrobeItem
+from app.services.temporal_intelligence import get_current_temporal_state
 
 
 def _run_async(coro: Any) -> Any:
@@ -146,6 +148,9 @@ def build_recommendations(
         outfit_history_tags=hist_tags,
         outfit_history=outfit_history,
     )
+    temporal_state = get_current_temporal_state(db, user_id=user_id)
+    temporal_weights = temporal_state.get("dynamic_weights", {}) if isinstance(temporal_state, dict) else {}
+    temporal_factors = temporal_state.get("state_factors", []) if isinstance(temporal_state, dict) else []
 
     wardrobe = WardrobeAgent()
     color = ColorAgent()
@@ -174,15 +179,41 @@ def build_recommendations(
         ]
     ] = []
     supervisor_candidates: list[dict[str, Any]] = []
+    fusion_monitor: list[dict[str, Any]] = []
 
     for cand in candidates:
-        results = [
+        raw_results = [
             color.evaluate(cand, pipeline_base),
             style.evaluate(cand, pipeline_base),
             wardrobe.evaluate(cand, pipeline_base),
             context_ag.evaluate(cand, pipeline_base),
         ]
-        total_pre, partials, reasons, trace, _conf = orch.merge(results, body.context.event_type)
+        results = [
+            normalize_result_contract(
+                raw_results[0],
+                expected_agent="color",
+                contract_payload={"season": "unknown", "undertone": "unknown", "contrast": "unknown", "confidence": 0.5, "palette_hex": []},
+            ),
+            normalize_result_contract(raw_results[1], expected_agent="style"),
+            normalize_result_contract(raw_results[2], expected_agent="wardrobe"),
+            normalize_result_contract(raw_results[3], expected_agent="context", contract_payload={"weather_specialist": True}),
+        ]
+        total_pre, partials, reasons, trace, _conf = orch.merge(
+            results,
+            body.context.event_type,
+            weight_overrides=temporal_weights if isinstance(temporal_weights, dict) else None,
+        )
+        harmony = partials.get("harmony", 0.5)
+        context_fit = partials.get("context_fit", 0.5)
+        if abs(harmony - context_fit) >= 0.35:
+            fusion_monitor.append(
+                {
+                    "candidate_key": "-".join(str(i) for i in sorted(cand.item_ids)),
+                    "signal": "color_context_divergence",
+                    "harmony": round(harmony, 3),
+                    "context_fit": round(context_fit, 3),
+                }
+            )
 
         final_score, adjustments = evidence_engine.apply(
             total_pre,
@@ -209,7 +240,15 @@ def build_recommendations(
             )
             for r in results
         ]
-        trace.append({"type": "orchestrator", "partials_pre_evidence": partials, "total_pre_evidence": total_pre})
+        trace.append(
+            {
+                "type": "orchestrator",
+                "partials_pre_evidence": partials,
+                "total_pre_evidence": total_pre,
+                "dynamic_weights": temporal_weights,
+                "state_factors": temporal_factors,
+            }
+        )
         for a in adjustments:
             trace.append(
                 {
@@ -285,6 +324,9 @@ def build_recommendations(
                 "conflict_flags": conflict_flags.get(candidate_key, []),
             }
         )
+        for monitor_event in fusion_monitor:
+            if monitor_event["candidate_key"] == candidate_key:
+                trace.append({"type": "monitoring", **monitor_event})
         suggestions.append(
             OutfitSuggestion(
                 rank=rank,

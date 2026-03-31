@@ -34,6 +34,7 @@ class OrchestratorAgent:
         self,
         results: list[AgentEvaluationResult],
         event_type: EventType,
+        weight_overrides: dict[str, float] | None = None,
     ) -> tuple[float, dict[str, float], list[str], list[dict[str, Any]], float]:
         partials: dict[str, float] = {}
         reasons: list[str] = []
@@ -44,6 +45,14 @@ class OrchestratorAgent:
             trace.extend(r.trace)
 
         weights = self._default_weights(event_type)
+        if weight_overrides:
+            for key in ALLOWED_WEIGHT_KEYS:
+                value = weight_overrides.get(key)
+                if isinstance(value, (int, float)):
+                    weights[key] = max(0.0, float(value))
+            total_override = sum(weights.values())
+            if total_override > 0:
+                weights = {k: v / total_override for k, v in weights.items()}
         if event_type == EventType.MEETING:
             reasons.append("Meeting context gives extra weight to context fit.")
 
