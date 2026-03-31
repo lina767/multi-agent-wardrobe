@@ -12,6 +12,7 @@ def _seed_wardrobe(client: TestClient) -> None:
             "formality": "business",
             "season_tags": [],
             "is_available": True,
+            "status": "clean",
             "style_tags": ["classic"],
         },
         {
@@ -21,6 +22,7 @@ def _seed_wardrobe(client: TestClient) -> None:
             "formality": "business",
             "season_tags": [],
             "is_available": True,
+            "status": "clean",
             "style_tags": ["classic"],
         },
         {
@@ -30,6 +32,7 @@ def _seed_wardrobe(client: TestClient) -> None:
             "formality": "smart_casual",
             "season_tags": [],
             "is_available": True,
+            "status": "clean",
             "style_tags": ["minimalist"],
         },
     ]
@@ -102,14 +105,16 @@ def test_wardrobe_patch_and_delete(client: TestClient) -> None:
             "formality": "casual",
             "season_tags": [],
             "is_available": True,
+            "status": "clean",
             "style_tags": [],
         },
     )
     assert r.status_code == 201
     iid = r.json()["id"]
-    u = client.patch(f"/api/v1/wardrobe/items/{iid}", json={"name": "Tee updated"})
+    u = client.patch(f"/api/v1/wardrobe/items/{iid}", json={"name": "Tee updated", "status": "dirty"})
     assert u.status_code == 200
     assert u.json()["name"] == "Tee updated"
+    assert u.json()["status"] == "dirty"
     d = client.delete(f"/api/v1/wardrobe/items/{iid}")
     assert d.status_code == 204
 
@@ -121,6 +126,43 @@ def test_recommendations_empty_wardrobe(client: TestClient) -> None:
     )
     assert r.status_code == 200
     assert r.json()["suggestions"] == []
+
+
+def test_recommendations_exclude_dirty_and_dry_cleaning_items(client: TestClient) -> None:
+    rows = [
+        {"name": "Clean top", "category": "top", "status": "clean"},
+        {"name": "Dirty top", "category": "top", "status": "dirty"},
+        {"name": "Clean bottom", "category": "bottom", "status": "clean"},
+        {"name": "Dry-clean shoes", "category": "shoes", "status": "dry_cleaning"},
+        {"name": "Clean shoes", "category": "shoes", "status": "clean"},
+    ]
+    for row in rows:
+        create = client.post(
+            "/api/v1/wardrobe/items",
+            json={
+                "name": row["name"],
+                "category": row["category"],
+                "color_families": ["neutral"],
+                "formality": "casual",
+                "season_tags": [],
+                "weather_tags": [],
+                "is_available": True,
+                "status": row["status"],
+                "style_tags": [],
+            },
+        )
+        assert create.status_code == 201
+
+    r = client.post(
+        "/api/v1/recommendations",
+        json={"context": {"event_type": "home"}, "max_candidates_to_rank": 20},
+    )
+    assert r.status_code == 200
+    suggestions = r.json()["suggestions"]
+    assert len(suggestions) >= 1
+    for suggestion in suggestions:
+        assert "Dirty top" not in suggestion["item_names"]
+        assert "Dry-clean shoes" not in suggestion["item_names"]
 
 
 def test_upload_inventory_image(client: TestClient) -> None:

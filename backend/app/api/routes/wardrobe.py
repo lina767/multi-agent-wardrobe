@@ -8,7 +8,7 @@ from app.agents.wardrobe_agent import WardrobeAgent
 from app.db.models import WardrobeItem
 from app.db.session import get_db
 from app.dependencies import get_current_user_id
-from app.domain.enums import ColorFamily, DresscodeLevel, WardrobeCategory
+from app.domain.enums import ColorFamily, DresscodeLevel, ItemStatus, WardrobeCategory
 from app.models.profile import UserProfile
 from app.services.temporal_intelligence import record_style_signal
 from app.storage import delete_image, resolve_image_url, upload_image
@@ -22,6 +22,7 @@ def list_items(
     category: str | None = Query(default=None),
     color_family: str | None = Query(default=None),
     weather_tag: str | None = Query(default=None),
+    status_filter: ItemStatus | None = Query(default=None, alias="status"),
     sort_by: str = Query(default="id"),
     sort_dir: str = Query(default="asc"),
     db: Session = Depends(get_db),
@@ -35,6 +36,8 @@ def list_items(
         rows = [row for row in rows if color_family in (row.color_families_json or [])]
     if weather_tag:
         rows = [row for row in rows if weather_tag in (row.weather_tags_json or [])]
+    if status_filter:
+        rows = [row for row in rows if (row.status or ItemStatus.CLEAN.value) == status_filter.value]
     reverse = sort_dir.lower() == "desc"
     if sort_by == "name":
         rows.sort(key=lambda row: row.name.lower(), reverse=reverse)
@@ -58,6 +61,7 @@ def create_item(
         season_tags_json=body.season_tags,
         weather_tags_json=body.weather_tags,
         is_available=body.is_available,
+        status=body.status.value,
         style_tags_json=body.style_tags,
         brand=body.brand,
         size_label=body.size_label,
@@ -89,6 +93,8 @@ def update_item(
         data["color_families_json"] = [c.value for c in data.pop("color_families")]
     if "formality" in data and data["formality"] is not None:
         data["formality"] = data["formality"].value
+    if "status" in data and data["status"] is not None:
+        data["status"] = data["status"].value
     if "season_tags" in data and data["season_tags"] is not None:
         data["season_tags_json"] = data.pop("season_tags")
     if "weather_tags" in data and data["weather_tags"] is not None:
@@ -188,6 +194,7 @@ async def bulk_upload_items(
             season_tags_json=[],
             weather_tags_json=[],
             is_available=True,
+            status=ItemStatus.CLEAN.value,
             style_tags_json=[],
             quantity=1,
         )
@@ -219,6 +226,7 @@ async def bulk_upload_items(
                 "style_tags": list(r.style_tags_json or []),
                 "season_tags": list(r.season_tags_json or []),
                 "is_available": r.is_available,
+                "status": r.status or ItemStatus.CLEAN.value,
             }
             for r in all_rows
         ]
@@ -259,6 +267,7 @@ def _serialize_row(row: WardrobeItem) -> WardrobeItemRead:
         season_tags=list(row.season_tags_json or []),
         weather_tags=list(row.weather_tags_json or []),
         is_available=row.is_available,
+        status=ItemStatus(row.status or ItemStatus.CLEAN.value),
         style_tags=list(row.style_tags_json or []),
         brand=row.brand,
         size_label=row.size_label,

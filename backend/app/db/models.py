@@ -38,6 +38,7 @@ class WardrobeItem(Base):
     season_tags_json: Mapped[list[str]] = mapped_column(JSON, default=list)
     weather_tags_json: Mapped[list[str]] = mapped_column(JSON, default=list)
     is_available: Mapped[bool] = mapped_column(Boolean, default=True)
+    status: Mapped[str] = mapped_column(String(32), default="clean", index=True)
     style_tags_json: Mapped[list[str]] = mapped_column(JSON, default=list)
     brand: Mapped[str | None] = mapped_column(String(120), nullable=True)
     size_label: Mapped[str | None] = mapped_column(String(40), nullable=True)

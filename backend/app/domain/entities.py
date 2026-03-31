@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.domain.enums import ColorFamily, DresscodeLevel, EventType, MoodEnergy, WardrobeCategory
+from app.domain.enums import ColorFamily, DresscodeLevel, EventType, ItemStatus, MoodEnergy, WardrobeCategory
 from app.api.schemas import ContextInput, UserStylePreferences
 
 
@@ -16,6 +16,7 @@ class WardrobeItemDTO:
     formality: DresscodeLevel
     season_tags: list[str]
     is_available: bool
+    status: ItemStatus
     style_tags: list[str]
     brand: str | None = None
     size_label: str | None = None

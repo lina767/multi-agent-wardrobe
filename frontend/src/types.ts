@@ -1,6 +1,7 @@
 export type WardrobeCategory = "top" | "bottom" | "outer" | "shoes" | "accessory";
 export type DresscodeLevel = "casual" | "smart_casual" | "business" | "formal";
 export type ColorFamily = "neutral" | "warm" | "cool" | "bold" | "earth" | "pastel";
+export type LaundryStatus = "clean" | "dirty" | "dry_cleaning";
 
 export interface WardrobeItem {
   id: number;
@@ -12,6 +13,7 @@ export interface WardrobeItem {
   season_tags: string[];
   weather_tags: string[];
   is_available: boolean;
+  status: LaundryStatus;
   style_tags: string[];
   brand?: string | null;
   size_label?: string | null;
@@ -30,6 +32,7 @@ export interface WardrobeItemCreate {
   season_tags: string[];
   weather_tags: string[];
   is_available: boolean;
+  status: LaundryStatus;
   style_tags: string[];
   brand?: string;
   size_label?: string;
@@ -76,6 +79,8 @@ export interface SuggestionsResponse {
     mood?: string;
     occasion?: string;
     weather?: {
+      condition?: string;
+      condition_raw?: string;
       temperature_c?: number;
       feels_like_c?: number;
       rain_probability?: number;

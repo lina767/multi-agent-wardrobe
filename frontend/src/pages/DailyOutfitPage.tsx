@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { api } from "../api";
 import { trackEvent } from "../telemetry";
-import type { Suggestion, SuggestionsResponse, WardrobeAnalyticsResponse } from "../types";
+import type { LaundryStatus, Suggestion, SuggestionsResponse, WardrobeAnalyticsResponse, WardrobeItem } from "../types";
 
 const moodLabels: Record<string, string> = {
   focus: "Focused",
@@ -29,20 +29,24 @@ export function DailyOutfitPage({ onGeneratedSuggestion }: DailyOutfitPageProps)
   const [location, setLocation] = useState("");
   const [response, setResponse] = useState<SuggestionsResponse | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [itemsById, setItemsById] = useState<Record<number, WardrobeItem>>({});
   const [wardrobeAnalytics, setWardrobeAnalytics] = useState<WardrobeAnalyticsResponse | null>(null);
   const [feedbackBySuggestion, setFeedbackBySuggestion] = useState<Record<number, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [feedbackBusyId, setFeedbackBusyId] = useState<number | null>(null);
   const [logBusyId, setLogBusyId] = useState<number | null>(null);
+  const [statusBusyId, setStatusBusyId] = useState<number | null>(null);
 
   async function handleLoad() {
     setLoading(true);
     setError(null);
     try {
       const [data, analytics] = await Promise.all([api.getSuggestions(mood, occasion, location), api.getWardrobeAnalytics()]);
+      const wardrobeItems = await api.listItems();
       setResponse(data);
       setWardrobeAnalytics(analytics);
+      setItemsById(Object.fromEntries(wardrobeItems.map((item) => [item.id, item])));
       const nextSuggestions = (data.suggestions ?? []).slice(0, 3);
       setSuggestions(nextSuggestions);
       if (nextSuggestions.length > 0) {
@@ -99,6 +103,32 @@ export function DailyOutfitPage({ onGeneratedSuggestion }: DailyOutfitPageProps)
     }
   }
 
+  async function handleSuggestionStatus(suggestion: Suggestion, status: LaundryStatus) {
+    setStatusBusyId(suggestion.id);
+    setError(null);
+    try {
+      await Promise.all(
+        suggestion.items.map((itemId) =>
+          api.updateItem(itemId, {
+            status,
+            is_available: status === "clean",
+          }),
+        ),
+      );
+      const refreshed = await api.listItems();
+      setItemsById(Object.fromEntries(refreshed.map((item) => [item.id, item])));
+      await handleLoad();
+      setFeedbackBySuggestion((prev) => ({
+        ...prev,
+        [suggestion.id]: status === "clean" ? "Suggestion items marked clean." : `Suggestion items marked ${status}.`,
+      }));
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to update laundry status.");
+    } finally {
+      setStatusBusyId(null);
+    }
+  }
+
   return (
     <section className="card pageSection">
       <div className="sectionHead">
@@ -137,8 +167,9 @@ export function DailyOutfitPage({ onGeneratedSuggestion }: DailyOutfitPageProps)
       </div>
       {response?.context?.weather ? (
         <p className="metaNote weatherPill">
-          Weather: {response.context.weather.temperature_c ?? "-"}°C, rain {Math.round((response.context.weather.rain_probability ?? 0) * 100)}%, UV{" "}
-          {response.context.weather.uv_index ?? "-"}, {response.context.weather.forecast_summary ?? "no summary"}
+          Weather: {response.context.weather.temperature_c ?? "-"}°C · {response.context.weather.condition ?? "unknown"} · rain{" "}
+          {Math.round((response.context.weather.rain_probability ?? 0) * 100)}% · UV {response.context.weather.uv_index ?? "-"} ·{" "}
+          {response.context.weather.forecast_summary ?? response.context.weather.condition_raw ?? "no summary"}
         </p>
       ) : null}
       {response?.scientific_note ? <p className="metaNote">{response.scientific_note}</p> : null}
@@ -173,6 +204,12 @@ export function DailyOutfitPage({ onGeneratedSuggestion }: DailyOutfitPageProps)
           {suggestion.evidence_tags?.length ? (
             <p className="metaNote">Evidence: {suggestion.evidence_tags.map((tag) => tag.citation_short).join(" • ")}</p>
           ) : null}
+          <p className="metaNote">
+            Laundry state:{" "}
+            {suggestion.items
+              .map((itemId) => `${itemsById[itemId]?.name ?? `#${itemId}`} (${itemsById[itemId]?.status ?? "unknown"})`)
+              .join(" · ")}
+          </p>
           <div className="suggestionActions">
             <button
               type="button"
@@ -197,6 +234,19 @@ export function DailyOutfitPage({ onGeneratedSuggestion }: DailyOutfitPageProps)
             </button>
             <button type="button" onClick={() => void handleLogWorn(suggestion)} disabled={logBusyId === suggestion.id}>
               {logBusyId === suggestion.id ? "Logging..." : "Log as worn"}
+            </button>
+            <button type="button" onClick={() => void handleSuggestionStatus(suggestion, "dirty")} disabled={statusBusyId === suggestion.id}>
+              Mark dirty
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSuggestionStatus(suggestion, "dry_cleaning")}
+              disabled={statusBusyId === suggestion.id}
+            >
+              Send to dry cleaning
+            </button>
+            <button type="button" onClick={() => void handleSuggestionStatus(suggestion, "clean")} disabled={statusBusyId === suggestion.id}>
+              Mark clean
             </button>
           </div>
           {feedbackBySuggestion[suggestion.id] ? <p className="metaNote">{feedbackBySuggestion[suggestion.id]}</p> : null}

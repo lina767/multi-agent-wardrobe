@@ -22,11 +22,13 @@ from app.api.schemas import (
     RecommendationResponse,
     UserStylePreferences,
 )
+from app.config import settings
 from app.domain.entities import OutfitCandidateDTO, RecommendationPipelineInput, WardrobeItemDTO
-from app.domain.enums import ColorFamily, DresscodeLevel, WardrobeCategory
+from app.domain.enums import ColorFamily, DresscodeLevel, ItemStatus, WardrobeCategory
 from app.evidence.rules import EvidenceRuleEngine
 from app.db.models import FeedbackEvent, OutfitLog, WardrobeItem
 from app.services.temporal_intelligence import get_current_temporal_state
+from app.services.vector_retrieval import VectorRetriever
 
 
 def _run_async(coro: Any) -> Any:
@@ -60,6 +62,7 @@ def _item_to_dto(row: WardrobeItem) -> WardrobeItemDTO:
         formality=DresscodeLevel(row.formality) if row.formality else DresscodeLevel.CASUAL,
         season_tags=list(row.season_tags_json or []),
         is_available=row.is_available,
+        status=ItemStatus(row.status or ItemStatus.CLEAN.value),
         style_tags=list(row.style_tags_json or []),
         brand=row.brand,
         size_label=row.size_label,
@@ -129,6 +132,39 @@ def _history_snapshot(db: Session, user_id: int, limit: int = 30) -> tuple[list[
     return tags, history
 
 
+def _build_retrieval_query(body: RecommendationRequest, style_prefs: UserStylePreferences) -> str:
+    tags = " ".join(style_prefs.preferred_style_tags[:8])
+    avoid = " ".join(style_prefs.avoid_style_tags[:5])
+    palette = " ".join(c.value for c in body.palette_bias[:6])
+    parts = [
+        f"event:{body.context.event_type.value}",
+        f"mood:{body.context.mood.value}",
+        tags,
+        palette,
+        body.context.forecast_summary or "",
+        body.context.notes or "",
+    ]
+    if avoid:
+        parts.append(f"avoid:{avoid}")
+    return " ".join(part.strip() for part in parts if part and part.strip())
+
+
+def _prioritize_candidates_by_vector_hits(
+    candidates: list[OutfitCandidateDTO],
+    hit_item_ids: list[int],
+) -> list[OutfitCandidateDTO]:
+    if not candidates or not hit_item_ids:
+        return candidates
+    order = {item_id: idx for idx, item_id in enumerate(hit_item_ids)}
+
+    def score_candidate(candidate: OutfitCandidateDTO) -> tuple[int, int]:
+        overlap = [item_id for item_id in candidate.item_ids if item_id in order]
+        # Prefer outfits with more retrieved items, then stronger (earlier) hit ranks.
+        return (len(overlap), -sum(order[item_id] for item_id in overlap))
+
+    return sorted(candidates, key=score_candidate, reverse=True)
+
+
 def build_recommendations(
     db: Session,
     user_id: int,
@@ -158,8 +194,17 @@ def build_recommendations(
     context_ag = ContextAgent()
     orch = OrchestratorAgent()
     evidence_engine = EvidenceRuleEngine()
+    vector_retriever = VectorRetriever()
 
     candidates = wardrobe.build_candidates(items, max_candidates=body.max_candidates_to_rank)
+    if settings.vector_store_backend.lower() != "none":
+        retrieval_query = _build_retrieval_query(body, style_prefs)
+        hit_ids = vector_retriever.retrieve_item_ids(
+            query_text=retrieval_query,
+            top_k=settings.vector_search_top_k,
+        )
+        candidates = _prioritize_candidates_by_vector_hits(candidates, hit_ids)
+
     if not candidates:
         return RecommendationResponse(
             suggestions=[],
@@ -282,6 +327,8 @@ def build_recommendations(
 
     supervisor_context = {
         "event_type": body.context.event_type.value,
+        "condition": body.context.condition,
+        "condition_raw": body.context.condition_raw,
         "temperature_c": body.context.temperature_c,
         "feels_like_c": body.context.feels_like_c,
         "rain_probability": body.context.rain_probability,

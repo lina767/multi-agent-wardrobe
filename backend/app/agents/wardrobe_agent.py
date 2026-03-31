@@ -7,6 +7,7 @@ from itertools import product
 
 from app.agents.constants import CATEGORY_SLOT_MAP
 from app.domain.entities import AgentEvaluationResult, OutfitCandidateDTO, RecommendationPipelineInput, WardrobeItemDTO
+from app.domain.enums import ItemStatus
 
 
 class WardrobeAgent:
@@ -51,7 +52,11 @@ class WardrobeAgent:
         )
 
     def analyze_wardrobe(self, items: list[dict], color_profile: dict | None = None) -> dict:
-        available_items = [i for i in items if i.get("is_available", True)]
+        available_items = [
+            i
+            for i in items
+            if i.get("is_available", True) and i.get("status", ItemStatus.CLEAN.value) == ItemStatus.CLEAN.value
+        ]
         graph = self._build_graph(available_items)
         outfit_potential = self._calculate_outfit_potential(available_items)
         capsules = self._capsule_suggestions(available_items)
@@ -64,7 +69,11 @@ class WardrobeAgent:
         }
 
     def run(self, context):  # pragma: no cover - compatibility shim
-        items = [i for i in context.wardrobe_items if i.get("is_available", True)]
+        items = [
+            i
+            for i in context.wardrobe_items
+            if i.get("is_available", True) and i.get("status", ItemStatus.CLEAN.value) == ItemStatus.CLEAN.value
+        ]
         graph = self._build_graph(items)
         outfit_potential = self._calculate_outfit_potential(items)
         capsules = self._capsule_suggestions(items)
@@ -89,7 +98,7 @@ class WardrobeAgent:
     def build_candidates(self, items: list[WardrobeItemDTO], max_candidates: int = 120) -> list[OutfitCandidateDTO]:
         by_slot: dict[str, list[WardrobeItemDTO]] = defaultdict(list)
         for item in items:
-            if not item.is_available:
+            if not item.is_available or item.status != ItemStatus.CLEAN:
                 continue
             by_slot[CATEGORY_SLOT_MAP.get(item.category.value, "other")].append(item)
 

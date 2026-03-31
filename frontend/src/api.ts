@@ -2,6 +2,7 @@ import type {
   BulkUploadResponse,
   ColorFamily,
   DresscodeLevel,
+  LaundryStatus,
   OnboardingResponse,
   ProfileCheckinCreate,
   ProfileCheckinRead,
@@ -60,6 +61,7 @@ export const api = {
     category?: WardrobeCategory | "";
     color_family?: ColorFamily | "";
     weather_tag?: string;
+    status?: LaundryStatus | "";
     sort_by?: "id" | "name";
     sort_dir?: "asc" | "desc";
   }) => {
@@ -72,6 +74,9 @@ export const api = {
     }
     if (filters.weather_tag?.trim()) {
       query.set("weather_tag", filters.weather_tag.trim());
+    }
+    if (filters.status) {
+      query.set("status", filters.status);
     }
     if (filters.sort_by) {
       query.set("sort_by", filters.sort_by);
@@ -91,11 +96,18 @@ export const api = {
   deleteItem: async (itemId: number) => {
     await request<unknown>(`/wardrobe/items/${itemId}`, { method: "DELETE" });
   },
-  updateItemName: (itemId: number, name: string) =>
+  updateItem: (
+    itemId: number,
+    payload: Partial<{
+      name: string;
+      is_available: boolean;
+      status: LaundryStatus;
+    }>,
+  ) =>
     request<WardrobeItem>(`/wardrobe/items/${itemId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify(payload),
     }),
   uploadImage: (itemId: number, file: File) => {
     const formData = new FormData();

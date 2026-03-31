@@ -39,3 +39,9 @@ class MoodEnergy(str, Enum):
     COMFORT = "comfort"
     SOCIAL = "social"
     FOCUS = "focus"
+
+
+class ItemStatus(str, Enum):
+    CLEAN = "clean"
+    DIRTY = "dirty"
+    DRY_CLEANING = "dry_cleaning"

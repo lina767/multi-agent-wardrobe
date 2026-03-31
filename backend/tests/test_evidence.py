@@ -2,7 +2,7 @@
 
 from app.api.schemas import ContextInput
 from app.domain.entities import WardrobeItemDTO
-from app.domain.enums import ColorFamily, DresscodeLevel, EventType, MoodEnergy, WardrobeCategory
+from app.domain.enums import ColorFamily, DresscodeLevel, EventType, ItemStatus, MoodEnergy, WardrobeCategory
 from app.evidence.rules import EvidenceRuleEngine
 
 
@@ -22,6 +22,7 @@ def _item(
         formality=formality,
         season_tags=[],
         is_available=True,
+        status=ItemStatus.CLEAN,
         style_tags=tags or [],
     )
 

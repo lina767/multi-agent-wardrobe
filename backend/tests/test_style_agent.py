@@ -1,7 +1,7 @@
 from app.agents.style_agent import StyleAgent
 from app.api.schemas import ContextInput, UserStylePreferences
 from app.domain.entities import OutfitCandidateDTO, RecommendationPipelineInput, WardrobeItemDTO
-from app.domain.enums import ColorFamily, DresscodeLevel, EventType, MoodEnergy, WardrobeCategory
+from app.domain.enums import ColorFamily, DresscodeLevel, EventType, ItemStatus, MoodEnergy, WardrobeCategory
 
 
 def _item(item_id: int, tags: list[str]) -> WardrobeItemDTO:
@@ -13,6 +13,7 @@ def _item(item_id: int, tags: list[str]) -> WardrobeItemDTO:
         formality=DresscodeLevel.CASUAL,
         season_tags=[],
         is_available=True,
+        status=ItemStatus.CLEAN,
         style_tags=tags,
     )
 

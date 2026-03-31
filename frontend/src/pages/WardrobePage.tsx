@@ -2,12 +2,13 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { api } from "../api";
 import { trackEvent } from "../telemetry";
-import type { ColorFamily, DresscodeLevel, WardrobeCategory, WardrobeItem, WardrobeItemCreate } from "../types";
+import type { ColorFamily, DresscodeLevel, LaundryStatus, WardrobeCategory, WardrobeItem, WardrobeItemCreate } from "../types";
 
 const categories: WardrobeCategory[] = ["top", "bottom", "outer", "shoes", "accessory"];
 const dresscodes: DresscodeLevel[] = ["casual", "smart_casual", "business", "formal"];
 const colors: ColorFamily[] = ["neutral", "warm", "cool", "bold", "earth", "pastel"];
 const weatherTags = ["cold", "mild", "hot", "rain", "wind", "snow"];
+const laundryStatuses: LaundryStatus[] = ["clean", "dirty", "dry_cleaning"];
 
 const initialForm: WardrobeItemCreate = {
   name: "",
@@ -17,6 +18,7 @@ const initialForm: WardrobeItemCreate = {
   season_tags: [],
   weather_tags: [],
   is_available: true,
+  status: "clean",
   style_tags: [],
   quantity: 1,
 };
@@ -43,6 +45,7 @@ export function WardrobePage() {
     category: "" as WardrobeCategory | "",
     color_family: "" as ColorFamily | "",
     weather_tag: "",
+    status: "" as LaundryStatus | "",
     sort_by: "id" as "id" | "name",
     sort_dir: "asc" as "asc" | "desc",
   });
@@ -64,7 +67,27 @@ export function WardrobePage() {
 
   useEffect(() => {
     void refreshItems();
-  }, [filters.category, filters.color_family, filters.weather_tag, filters.sort_by, filters.sort_dir]);
+  }, [filters.category, filters.color_family, filters.weather_tag, filters.status, filters.sort_by, filters.sort_dir]);
+
+  async function handleStatusUpdate(itemId: number, status: LaundryStatus) {
+    setBusyItemIds((prev) => new Set(prev).add(itemId));
+    setError(null);
+    try {
+      await api.updateItem(itemId, {
+        status,
+        is_available: status === "clean",
+      });
+      await refreshItems();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to update item status.");
+    } finally {
+      setBusyItemIds((prev) => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+    }
+  }
 
   async function handleCreateItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -251,6 +274,17 @@ export function WardrobePage() {
           </select>
         </label>
         <label className="field inline">
+          Laundry status
+          <select value={filters.status} onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value as LaundryStatus | "" }))}>
+            <option value="">all</option>
+            {laundryStatuses.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field inline">
           Sort by
           <select value={filters.sort_by} onChange={(event) => setFilters((prev) => ({ ...prev, sort_by: event.target.value as "id" | "name" }))}>
             <option value="id">id</option>
@@ -283,8 +317,23 @@ export function WardrobePage() {
               </p>
               <p>Color: {item.color_families.join(", ")}</p>
               <p>Weather: {item.weather_tags.join(", ") || "none"}</p>
+              <p>Laundry: {item.status}</p>
             </div>
             <div className="actions">
+              <label className="field inline">
+                Status
+                <select
+                  value={item.status}
+                  disabled={busyItemIds.has(item.id)}
+                  onChange={(event) => void handleStatusUpdate(item.id, event.target.value as LaundryStatus)}
+                >
+                  {laundryStatuses.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="uploadButton">
                 Upload image
                 <input type="file" accept="image/*" onChange={(event) => void handleUpload(item.id, event.target.files?.[0] ?? null)} />

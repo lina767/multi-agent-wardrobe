@@ -11,6 +11,7 @@ _INVENTORY_COLUMNS: dict[str, str] = {
     "notes": "TEXT",
     "image_path": "TEXT",
     "weather_tags_json": "JSON",
+    "status": "TEXT DEFAULT 'clean'",
 }
 
 _OUTFIT_LOG_COLUMNS: dict[str, str] = {
@@ -39,6 +40,7 @@ def ensure_inventory_schema(db: Session) -> None:
         if col in cols:
             continue
         db.execute(text(f"ALTER TABLE wardrobe_items ADD COLUMN {col} {sql_type}"))
+    db.execute(text("UPDATE wardrobe_items SET status = 'clean' WHERE status IS NULL OR status = ''"))
     db.commit()
 
 

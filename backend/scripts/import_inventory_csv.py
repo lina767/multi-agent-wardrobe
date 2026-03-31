@@ -7,6 +7,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 from app.bootstrap import get_default_user_id
 from app.db.models import WardrobeItem
 from app.db.session import SessionLocal, init_db
+from app.domain.enums import ItemStatus
 
 
 def parse_list(value: str) -> list[str]:
@@ -52,6 +53,7 @@ def main(csv_path: str = "data/inventory_sample.csv") -> None:
                     formality=row.get("formality", "casual"),
                     season_tags_json=parse_list(row.get("season_tags", "")),
                     is_available=to_bool(row.get("is_available", "true")),
+                    status=row.get("status", ItemStatus.CLEAN.value) or ItemStatus.CLEAN.value,
                     style_tags_json=parse_list(row.get("style_tags", "")),
                     brand=row.get("brand") or None,
                     size_label=row.get("size_label") or None,
