@@ -25,10 +25,10 @@ export function SettingsPage() {
 
   return (
     <section className="card">
-      <h2>Settings</h2>
+      <h2>Studio Settings</h2>
       <form className="grid" onSubmit={handleSubmit}>
         <label className="field">
-          Change email
+          Email address
           <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
         </label>
         <button type="submit" disabled={saving}>

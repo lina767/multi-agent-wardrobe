@@ -17,7 +17,7 @@ export function LoginPage() {
     setStatus(null);
     try {
       await sendMagicLink(email.trim());
-      setStatus("Magic link sent. Check your inbox.");
+      setStatus("Magic link sent. Check your inbox to continue.");
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to send magic link.");
     } finally {
@@ -28,8 +28,8 @@ export function LoginPage() {
   return (
     <main className="layout">
       <section className="card authCard">
-        <h1>Login</h1>
-        <p>Enter your email to receive a secure magic link.</p>
+        <h1>Welcome back</h1>
+        <p>Enter your email and we will send a secure magic link to your style studio.</p>
         <form className="grid" onSubmit={handleSubmit}>
           <label className="field">
             Email
@@ -43,7 +43,7 @@ export function LoginPage() {
         {authError ? <p className="error">{authError}</p> : null}
         {error ? <p className="error">{error}</p> : null}
         <p>
-          <Link to="/">Back to website</Link>
+          <Link to="/">Back to home</Link>
         </p>
       </section>
     </main>

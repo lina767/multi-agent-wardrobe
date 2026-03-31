@@ -9,8 +9,6 @@ export function OnboardingPage() {
     age: "",
     life_phase: "",
     figure_analysis: "",
-    mood: "focus",
-    occasion: "casual",
     location: "",
   });
   const [result, setResult] = useState<OnboardingResponse | null>(null);
@@ -27,8 +25,6 @@ export function OnboardingPage() {
         age: form.age ? Number(form.age) : undefined,
         life_phase: form.life_phase || undefined,
         figure_analysis: form.figure_analysis || undefined,
-        mood: form.mood,
-        occasion: form.occasion,
         location: form.location || undefined,
       });
       setResult(data);
@@ -41,8 +37,8 @@ export function OnboardingPage() {
 
   return (
     <section className="card">
-      <h2>Onboarding</h2>
-      <p>Run a first-pass profile setup and trigger agents for initial outfit suggestions.</p>
+      <h2>Style Onboarding</h2>
+      <p>Set your baseline once. Mood and occasion stay in Daily Outfit Intelligence because they change day to day.</p>
       {error ? <p className="error">{error}</p> : null}
       <form className="grid" onSubmit={handleSubmit}>
         <label className="field">
@@ -54,34 +50,15 @@ export function OnboardingPage() {
           <input value={form.age} onChange={(event) => setForm((prev) => ({ ...prev, age: event.target.value }))} />
         </label>
         <label className="field">
-          Life phase
+          Life chapter
           <input value={form.life_phase} onChange={(event) => setForm((prev) => ({ ...prev, life_phase: event.target.value }))} />
         </label>
         <label className="field">
-          Figure analysis note
+          Silhouette note
           <input
             value={form.figure_analysis}
             onChange={(event) => setForm((prev) => ({ ...prev, figure_analysis: event.target.value }))}
           />
-        </label>
-        <label className="field">
-          Mood
-          <select value={form.mood} onChange={(event) => setForm((prev) => ({ ...prev, mood: event.target.value }))}>
-            <option value="focus">focus</option>
-            <option value="power">power</option>
-            <option value="creative">creative</option>
-            <option value="comfort">comfort</option>
-            <option value="social">social</option>
-          </select>
-        </label>
-        <label className="field">
-          Occasion
-          <select value={form.occasion} onChange={(event) => setForm((prev) => ({ ...prev, occasion: event.target.value }))}>
-            <option value="casual">casual</option>
-            <option value="work">work</option>
-            <option value="date">date</option>
-            <option value="event">event</option>
-          </select>
         </label>
         <label className="field">
           Location
@@ -94,7 +71,7 @@ export function OnboardingPage() {
       {result ? (
         <div>
           <p>
-            Temporal confidence: {result.temporal_state.confidence.toFixed(2)} · factors:{" "}
+            Context confidence: {result.temporal_state.confidence.toFixed(2)} · factors:{" "}
             {result.temporal_state.state_factors.join(" | ") || "none"}
           </p>
           {result.suggestions.map((suggestion, index) => (

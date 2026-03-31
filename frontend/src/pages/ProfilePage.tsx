@@ -84,7 +84,7 @@ export function ProfilePage() {
 
   return (
     <section className="card">
-      <h2>Profile</h2>
+      <h2>Identity Profile</h2>
       {error ? <p className="error">{error}</p> : null}
       <form className="grid" onSubmit={handleSubmit}>
         <label className="field">
@@ -96,11 +96,11 @@ export function ProfilePage() {
           <input type="number" min={1} max={120} value={age} onChange={(event) => setAge(event.target.value ? Number(event.target.value) : "")} />
         </label>
         <label className="field">
-          Life phase
+          Life chapter
           <input value={lifePhase} onChange={(event) => setLifePhase(event.target.value)} />
         </label>
         <label className="field">
-          Figure analysis
+          Silhouette notes
           <input value={figureAnalysis} onChange={(event) => setFigureAnalysis(event.target.value)} />
         </label>
         <button type="submit" disabled={saving}>
@@ -109,18 +109,18 @@ export function ProfilePage() {
       </form>
       <div className="row">
         <label className="uploadButton">
-          Upload selfie
+          Upload portrait
           <input type="file" accept="image/*" onChange={(event) => void handleSelfieUpload(event.target.files?.[0] ?? null)} />
         </label>
         <label className="uploadButton">
-          {analyzing ? "Analyzing..." : "Analyze figure"}
+          {analyzing ? "Analyzing..." : "Analyze silhouette"}
           <input type="file" accept="image/*" onChange={(event) => void handleAnalyze(event.target.files?.[0] ?? null)} />
         </label>
       </div>
       {profile?.selfie_url ? <img src={profile.selfie_url} alt="Selfie" className="profileSelfie" /> : null}
       {profile?.color_profile ? (
         <p>
-          Color profile: {profile.color_profile.season} / {profile.color_profile.undertone} / {profile.color_profile.contrast_level}
+          Color signature: {profile.color_profile.season} / {profile.color_profile.undertone} / {profile.color_profile.contrast_level}
         </p>
       ) : null}
     </section>

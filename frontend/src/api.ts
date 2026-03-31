@@ -167,8 +167,6 @@ export const api = {
     age?: number;
     life_phase?: string;
     figure_analysis?: string;
-    mood?: string;
-    occasion?: string;
     location?: string;
   }) =>
     request<OnboardingResponse>("/profile/onboarding", {

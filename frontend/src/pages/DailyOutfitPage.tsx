@@ -28,8 +28,8 @@ export function DailyOutfitPage() {
 
   return (
     <section className="card">
-      <h2>Daily Outfit Intelligence</h2>
-      <p>How do you want to feel today? Choose mood, occasion, and location for weather-aware top 3 outfits.</p>
+      <h2>Daily Edit</h2>
+      <p>Choose how you want to feel today. We will compose three weather-aware outfit options with clear reasoning.</p>
       {error ? <p className="error">{error}</p> : null}
       <div className="row">
         <label className="field inline">
@@ -56,7 +56,7 @@ export function DailyOutfitPage() {
           <input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Berlin,de" />
         </label>
         <button type="button" onClick={() => void handleLoad()} disabled={loading}>
-          {loading ? "Generating..." : "Generate Top 3"}
+          {loading ? "Generating..." : "Generate top 3"}
         </button>
       </div>
       {response?.context?.weather ? (
@@ -69,7 +69,7 @@ export function DailyOutfitPage() {
         <article key={suggestion.id} className="suggestion">
           <h3>{suggestion.item_names.join(" + ")}</h3>
           <p>Score: {suggestion.total_score.toFixed(3)}</p>
-          <p>Why this outfit: {suggestion.explanation}</p>
+          <p>Editorial note: {suggestion.explanation}</p>
         </article>
       ))}
     </section>

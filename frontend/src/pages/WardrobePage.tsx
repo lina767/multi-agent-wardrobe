@@ -143,7 +143,7 @@ export function WardrobePage() {
 
   return (
     <section className="card">
-      <h2>Virtual Wardrobe</h2>
+      <h2>Wardrobe Archive</h2>
       {error ? <p className="error">{error}</p> : null}
       <form className="grid" onSubmit={handleCreateItem}>
         <label className="field">
@@ -190,26 +190,26 @@ export function WardrobePage() {
           </select>
         </label>
         <label className="field">
-          Season tags
+          Season notes
           <input placeholder="spring, autumn" value={seasonTagsText} onChange={(event) => setSeasonTagsText(event.target.value)} />
         </label>
         <label className="field">
-          Weather tags
+          Weather notes
           <input placeholder="cold, rain" value={weatherTagsText} onChange={(event) => setWeatherTagsText(event.target.value)} />
         </label>
         <label className="field">
-          Style tags
+          Style cues
           <input placeholder="classic, minimal" value={styleTagsText} onChange={(event) => setStyleTagsText(event.target.value)} />
         </label>
-        <button type="submit">Add item</button>
+        <button type="submit">Add piece</button>
       </form>
       <div className="row">
         <label className="uploadButton">
-          {uploadingBulk ? "Uploading..." : "Bulk upload"}
+          {uploadingBulk ? "Uploading..." : "Bulk import"}
           <input type="file" accept="image/*" multiple onChange={(event) => void handleBulkUpload(event.target.files)} />
         </label>
         <label className="field inline">
-          Filter category
+          Filter by category
           <select value={filters.category} onChange={(event) => setFilters((prev) => ({ ...prev, category: event.target.value as WardrobeCategory | "" }))}>
             <option value="">all</option>
             {categories.map((category) => (
@@ -220,7 +220,7 @@ export function WardrobePage() {
           </select>
         </label>
         <label className="field inline">
-          Filter color
+          Filter by color
           <select value={filters.color_family} onChange={(event) => setFilters((prev) => ({ ...prev, color_family: event.target.value as ColorFamily | "" }))}>
             <option value="">all</option>
             {colors.map((color) => (
@@ -231,7 +231,7 @@ export function WardrobePage() {
           </select>
         </label>
         <label className="field inline">
-          Filter weather
+          Filter by weather
           <select value={filters.weather_tag} onChange={(event) => setFilters((prev) => ({ ...prev, weather_tag: event.target.value }))}>
             <option value="">all</option>
             {weatherTags.map((tag) => (
@@ -242,7 +242,7 @@ export function WardrobePage() {
           </select>
         </label>
         <label className="field inline">
-          Sort
+          Sort by
           <select value={filters.sort_by} onChange={(event) => setFilters((prev) => ({ ...prev, sort_by: event.target.value as "id" | "name" }))}>
             <option value="id">id</option>
             <option value="name">name</option>
@@ -275,7 +275,7 @@ export function WardrobePage() {
                 <input type="file" accept="image/*" onChange={(event) => void handleUpload(item.id, event.target.files?.[0] ?? null)} />
               </label>
               <button type="button" onClick={() => void handleDelete(item.id)} disabled={busyItemIds.has(item.id)}>
-                Remove
+                Remove piece
               </button>
             </div>
           </article>

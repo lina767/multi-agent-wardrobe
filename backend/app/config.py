@@ -4,7 +4,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="WARDROBE_", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="WARDROBE_",
+        extra="ignore",
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
 
     database_url: str = f"sqlite:///{Path(__file__).resolve().parent.parent / 'data' / 'wardrobe.db'}"
     cors_origins: list[str] = [

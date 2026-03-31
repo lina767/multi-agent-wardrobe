@@ -249,8 +249,6 @@ class OnboardingRequest(BaseModel):
     age: int | None = Field(default=None, ge=1, le=120)
     life_phase: str | None = Field(default=None, max_length=120)
     figure_analysis: str | None = None
-    mood: str = "focus"
-    occasion: str = "casual"
     location: str | None = None
 
 

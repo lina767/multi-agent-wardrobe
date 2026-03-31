@@ -1,7 +1,20 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap");
+
 :root {
-  font-family: "Segoe UI", sans-serif;
-  color: #112;
-  background: #f6f7fb;
+  --bg: #efe7dc;
+  --bg-soft: #f6f1ea;
+  --surface: #fcf9f4;
+  --surface-strong: #f7efe2;
+  --ink: #2f2b25;
+  --ink-muted: #6c6256;
+  --line: #d8cab6;
+  --line-strong: #bcaa92;
+  --accent: #7f5b3f;
+  --accent-soft: #e7d8c4;
+  --danger: #8a2f2a;
+  font-family: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--bg);
 }
 
 * {
@@ -10,25 +23,47 @@
 
 body {
   margin: 0;
+  background:
+    radial-gradient(circle at top right, #f8efe2 0%, rgba(248, 239, 226, 0) 45%),
+    radial-gradient(circle at bottom left, #e6d7c4 0%, rgba(230, 215, 196, 0) 35%),
+    var(--bg);
+  color: var(--ink);
+  line-height: 1.45;
 }
 
 a {
-  color: #2f4f8f;
+  color: var(--accent);
 }
 
 .layout {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 1.25rem;
+  padding: 1.5rem;
   display: grid;
-  gap: 1rem;
+  gap: 1.1rem;
 }
 
 .hero {
-  background: #ffffff;
-  border: 1px solid #dde2f0;
-  border-radius: 14px;
-  padding: 1rem 1.2rem;
+  background: linear-gradient(145deg, var(--surface), var(--surface-strong));
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 1.2rem 1.35rem;
+  box-shadow: 0 12px 28px rgba(67, 45, 19, 0.08);
+}
+
+.hero h1,
+.topbar h2,
+h2,
+h3 {
+  margin-top: 0.15rem;
+  font-family: "Plus Jakarta Sans", "Manrope", sans-serif;
+  letter-spacing: 0.01em;
+  font-weight: 600;
+}
+
+.hero p {
+  color: var(--ink-muted);
+  max-width: 70ch;
 }
 
 .dashNav {
@@ -38,47 +73,57 @@ a {
 }
 
 .dashLink {
-  border: 1px solid #c9d1e8;
+  border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 0.4rem 0.75rem;
+  padding: 0.42rem 0.78rem;
   text-decoration: none;
-  color: #21335c;
-  background: #fff;
+  color: #55483b;
+  background: var(--surface);
   font-size: 0.92rem;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.dashLink:hover {
+  border-color: var(--line-strong);
+  background: #fff;
 }
 
 .dashLink.active {
-  background: #e7efff;
-  border-color: #97b2ef;
+  background: var(--accent-soft);
+  border-color: #a28a6d;
+  color: #4a3727;
+  font-weight: 600;
 }
 
 .topbar {
   max-width: 1100px;
   margin: 0.75rem auto 0;
   padding: 0.75rem 1.25rem;
-  border: 1px solid #dde2f0;
-  border-radius: 12px;
-  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-shadow: 0 8px 20px rgba(67, 45, 19, 0.06);
 }
 
 .topbar p {
   margin: 0.2rem 0 0;
-  color: #3f4e72;
+  color: var(--ink-muted);
 }
 
 .card {
-  background: #ffffff;
-  border: 1px solid #dde2f0;
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 14px;
   padding: 1rem;
+  box-shadow: 0 10px 24px rgba(67, 45, 19, 0.05);
 }
 
 .error {
   margin: 0;
-  color: #8a1524;
+  color: var(--danger);
 }
 
 .grid {
@@ -110,14 +155,29 @@ select,
 button {
   font: inherit;
   padding: 0.45rem 0.6rem;
-  border: 1px solid #c9d1e8;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: #fffdf9;
+  color: var(--ink);
+}
+
+input:focus,
+select:focus,
+button:focus {
+  outline: 2px solid rgba(127, 91, 63, 0.22);
+  outline-offset: 1px;
+  border-color: #9a7b5f;
 }
 
 button {
   cursor: pointer;
   font-weight: 600;
+  background: linear-gradient(180deg, #fffaf2, #f2e5d4);
+  border-color: #c6b39a;
+}
+
+button:hover {
+  background: linear-gradient(180deg, #fffdf9, #f5e9db);
 }
 
 .items {
@@ -127,7 +187,7 @@ button {
 }
 
 .item {
-  border: 1px solid #e0e6f6;
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0.75rem;
   display: grid;
@@ -151,11 +211,11 @@ button {
 .thumbPlaceholder {
   width: 100%;
   height: 100%;
-  border: 1px dashed #c3cde8;
+  border: 1px dashed #bea98f;
   border-radius: 8px;
   display: grid;
   place-items: center;
-  color: #5f6d91;
+  color: var(--ink-muted);
   font-size: 0.85rem;
 }
 
@@ -170,16 +230,17 @@ button {
 }
 
 .uploadButton {
-  border: 1px solid #c9d1e8;
+  border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0.45rem 0.6rem;
   font-size: 0.9rem;
   text-align: center;
   cursor: pointer;
+  background: #fbf4ea;
 }
 
 .suggestion {
-  border-top: 1px solid #edf0f8;
+  border-top: 1px solid #e6d9c9;
   padding-top: 0.8rem;
   margin-top: 0.8rem;
 }
@@ -189,21 +250,24 @@ button {
   height: 180px;
   border-radius: 12px;
   object-fit: cover;
-  border: 1px solid #dde2f0;
+  border: 1px solid var(--line);
 }
 
 .linkButton {
   display: inline-block;
-  border: 1px solid #c9d1e8;
+  border: 1px solid #bda78d;
   border-radius: 8px;
   padding: 0.45rem 0.7rem;
   text-decoration: none;
   font-weight: 600;
-  background: #f8faff;
+  background: linear-gradient(180deg, #fffaf2, #f1e2cf);
+  color: #49372a;
 }
 
 .linkButton.subtle {
-  background: #fff;
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
 }
 
 .authCard {

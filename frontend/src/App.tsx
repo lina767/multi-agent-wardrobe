@@ -10,24 +10,24 @@ export function App() {
   return (
     <main className="layout">
       <header className="hero">
-        <h1>Multi-Agent Wardrobe Dashboard</h1>
-        <p>Profile, wardrobe, onboarding, daily outfit intelligence, and account settings.</p>
+        <h1>Wardrobe Studio</h1>
+        <p>Your warm, intelligent style workspace: profile, wardrobe, onboarding, daily outfit guidance, and account controls.</p>
       </header>
       <nav className="dashNav">
         <NavLink to="/dashboard/profile" className="dashLink">
-          1. Profile
+          1. Identity
         </NavLink>
         <NavLink to="/dashboard/wardrobe" className="dashLink">
-          2. Virtual Wardrobe
+          2. Wardrobe Archive
         </NavLink>
         <NavLink to="/dashboard/onboarding" className="dashLink">
-          3. Onboarding
+          3. Style Onboarding
         </NavLink>
         <NavLink to="/dashboard/daily" className="dashLink">
-          4. Daily Outfit Intelligence
+          4. Daily Edit
         </NavLink>
         <NavLink to="/dashboard/settings" className="dashLink">
-          5. Settings
+          5. Studio Settings
         </NavLink>
       </nav>
       <Routes>
