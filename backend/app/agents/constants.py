@@ -1,5 +1,5 @@
 MOODS = ["power", "creative", "comfort", "social", "focus"]
-OCCASIONS = ["casual", "work", "date", "event", "active"]
+OCCASIONS = ["casual", "smart casual", "event", "sport"]
 
 MOOD_ARCHETYPES: dict[str, dict[str, list[str]]] = {
     "power": {
@@ -26,10 +26,9 @@ MOOD_ARCHETYPES: dict[str, dict[str, list[str]]] = {
 
 OCCASION_FORMALITY_TARGET: dict[str, float] = {
     "casual": 0.3,
-    "work": 0.7,
-    "date": 0.6,
+    "smart casual": 0.65,
     "event": 0.8,
-    "active": 0.2,
+    "sport": 0.2,
 }
 
 CATEGORY_SLOT_MAP: dict[str, str] = {

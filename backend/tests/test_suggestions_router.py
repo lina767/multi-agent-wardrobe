@@ -20,7 +20,7 @@ def test_palette_bias_ignores_invalid_values() -> None:
 
 
 def test_occasion_to_event_mapping() -> None:
-    assert _occasion_to_event("work") == EventType.MEETING
-    assert _occasion_to_event("date") == EventType.DATE
+    assert _occasion_to_event("smart casual") == EventType.MEETING
     assert _occasion_to_event("casual") == EventType.ERRAND
+    assert _occasion_to_event("sport") == EventType.ERRAND
     assert _occasion_to_event("unknown-value") == EventType.OTHER

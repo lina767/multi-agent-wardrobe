@@ -264,7 +264,7 @@ def test_suggestions_include_temporal_style_profile(client: TestClient) -> None:
         },
     )
     assert checkin.status_code == 200
-    response = client.get("/api/v1/suggestions?mood=focus&occasion=work")
+    response = client.get("/api/v1/suggestions?mood=focus&occasion=smart%20casual")
     assert response.status_code == 200
     body = response.json()
     assert "style_profile" in body
@@ -286,27 +286,27 @@ def test_suggestions_include_temporal_state_when_no_checkin(client: TestClient) 
 
 
 def test_suggestions_requires_wardrobe_items(client: TestClient) -> None:
-    response = client.get("/api/v1/suggestions?mood=focus&occasion=work")
+    response = client.get("/api/v1/suggestions?mood=focus&occasion=smart%20casual")
     assert response.status_code == 400
     assert "No wardrobe items found" in response.json()["detail"]
 
 
 def test_outfit_log_and_suggestion_feedback_flow(client: TestClient) -> None:
     _seed_wardrobe(client)
-    suggestions = client.get("/api/v1/suggestions?mood=focus&occasion=work")
+    suggestions = client.get("/api/v1/suggestions?mood=focus&occasion=smart%20casual")
     assert suggestions.status_code == 200
     first_suggestion_id = suggestions.json()["suggestions"][0]["id"]
 
     log_response = client.post(
         "/api/v1/outfits/log",
-        json={"item_ids": [1, 2, 3], "occasion": "work", "mood": "focus", "style_goals": ["minimalist"]},
+        json={"item_ids": [1, 2, 3], "occasion": "smart casual", "mood": "focus", "style_goals": ["minimalist"]},
     )
     assert log_response.status_code == 200
     assert log_response.json()["status"] == "logged"
 
     feedback_response = client.post(
         f"/api/v1/suggestions/{first_suggestion_id}/feedback",
-        json={"accepted": True, "rating": 5, "occasion": "work"},
+        json={"accepted": True, "rating": 5, "occasion": "smart casual"},
     )
     assert feedback_response.status_code == 200
     assert feedback_response.json()["status"] == "updated"

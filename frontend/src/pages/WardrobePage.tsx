@@ -166,23 +166,25 @@ export function WardrobePage() {
   }
 
   return (
-    <section className="card pageSection">
-      <div className="sectionHead">
-        <p className="eyebrow">Closet Management</p>
-        <p className="metaNote">{items.length} pieces loaded</p>
-      </div>
-      <h2>Wardrobe</h2>
-      <p className="metaNote">Add pieces, upload photos, and keep laundry status up to date for better daily recommendations.</p>
+    <section className="card pageSection wardrobePage">
+      <header className="wardrobeHeader">
+        <div className="sectionHead">
+          <p className="eyebrow">Closet Management</p>
+          <p className="metaNote">{items.length} pieces loaded</p>
+        </div>
+        <h2>Wardrobe Archive</h2>
+        <p className="metaNote wardrobeIntro">Add pieces, upload photos, and keep laundry status up to date for better daily recommendations.</p>
+        <div className="wardrobeSummary row">
+          <span className="guideStep done">Ready to wear: {availableCount}</span>
+          <span className="guideStep">Needs care: {Math.max(0, items.length - availableCount)}</span>
+        </div>
+      </header>
       {error ? <p className="error">{error}</p> : null}
-      <div className="wardrobeSummary row">
-        <span className="guideStep done">Ready to wear: {availableCount}</span>
-        <span className="guideStep">Needs care: {Math.max(0, items.length - availableCount)}</span>
-      </div>
-      <section className="card wardrobeBlock">
+      <section className="card wardrobeBlock wardrobeComposer">
         <div className="sectionHead">
           <p className="eyebrow">Add Piece</p>
         </div>
-        <form className="grid" onSubmit={handleCreateItem}>
+        <form className="grid wardrobeFormGrid" onSubmit={handleCreateItem}>
           <label className="field">
             Name
             <input required value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} />
@@ -238,19 +240,21 @@ export function WardrobePage() {
             Style cues
             <input placeholder="classic, minimal" value={styleTagsText} onChange={(event) => setStyleTagsText(event.target.value)} />
           </label>
-          <button type="submit">Add piece</button>
+          <button className="wardrobePrimaryButton" type="submit">
+            Add piece
+          </button>
         </form>
       </section>
-      <section className="card wardrobeBlock">
+      <section className="card wardrobeBlock wardrobeControls">
         <div className="sectionHead">
           <p className="eyebrow">Import & Filter</p>
         </div>
-        <div className="row">
-          <label className="uploadButton">
+        <div className="wardrobeControlsGrid">
+          <label className="uploadButton wardrobeBulkUpload">
             {uploadingBulk ? "Uploading..." : "Bulk import"}
             <input type="file" accept="image/*" multiple onChange={(event) => void handleBulkUpload(event.target.files)} />
           </label>
-          <label className="field inline">
+          <label className="field inline wardrobeFilterField">
             Category
             <select value={filters.category} onChange={(event) => setFilters((prev) => ({ ...prev, category: event.target.value as WardrobeCategory | "" }))}>
               <option value="">all</option>
@@ -261,7 +265,7 @@ export function WardrobePage() {
               ))}
             </select>
           </label>
-          <label className="field inline">
+          <label className="field inline wardrobeFilterField">
             Color
             <select value={filters.color_family} onChange={(event) => setFilters((prev) => ({ ...prev, color_family: event.target.value as ColorFamily | "" }))}>
               <option value="">all</option>
@@ -272,7 +276,7 @@ export function WardrobePage() {
               ))}
             </select>
           </label>
-          <label className="field inline">
+          <label className="field inline wardrobeFilterField">
             Weather
             <select value={filters.weather_tag} onChange={(event) => setFilters((prev) => ({ ...prev, weather_tag: event.target.value }))}>
               <option value="">all</option>
@@ -283,7 +287,7 @@ export function WardrobePage() {
               ))}
             </select>
           </label>
-          <label className="field inline">
+          <label className="field inline wardrobeFilterField">
             Laundry
             <select value={filters.status} onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value as LaundryStatus | "" }))}>
               <option value="">all</option>
@@ -294,14 +298,14 @@ export function WardrobePage() {
               ))}
             </select>
           </label>
-          <label className="field inline">
+          <label className="field inline wardrobeSortField">
             Sort by
             <select value={filters.sort_by} onChange={(event) => setFilters((prev) => ({ ...prev, sort_by: event.target.value as "id" | "name" }))}>
               <option value="id">id</option>
               <option value="name">name</option>
             </select>
           </label>
-          <label className="field inline">
+          <label className="field inline wardrobeSortField">
             Direction
             <select value={filters.sort_dir} onChange={(event) => setFilters((prev) => ({ ...prev, sort_dir: event.target.value as "asc" | "desc" }))}>
               <option value="asc">asc</option>
@@ -309,6 +313,7 @@ export function WardrobePage() {
             </select>
           </label>
           <button
+            className="wardrobeResetButton"
             type="button"
             onClick={() =>
               setFilters({
@@ -325,62 +330,64 @@ export function WardrobePage() {
           </button>
         </div>
       </section>
-      <div className="sectionHead">
-        <p className="eyebrow">Your Pieces</p>
-      </div>
-      {bulkResult ? <p className="metaNote">{bulkResult}</p> : null}
-      {loading ? <p className="metaNote">Loading wardrobe...</p> : null}
-      {!loading && sortedItems.length === 0 ? (
-        <div className="emptyState">
-          <h3>Your wardrobe is still empty</h3>
-          <p>Start with 3-5 core pieces or use bulk import so Daily Edit can generate meaningful combinations.</p>
+      <section className="wardrobeList">
+        <div className="sectionHead">
+          <p className="eyebrow">Your Pieces</p>
         </div>
-      ) : null}
-      <div className="items">
-        {sortedItems.map((item) => (
-          <article className="item" key={item.id}>
-            <div className="thumbWrap">
-              {item.image_url ? (
-                <img src={item.image_url} alt={item.name} className="thumb" />
-              ) : (
-                <div className="thumbPlaceholder">No image</div>
-              )}
-            </div>
-            <div>
-              <h3>{item.name}</h3>
-              <p>
-                {item.category} · {item.formality}
-              </p>
-              <p>Color: {item.color_families.join(", ")}</p>
-              <p>Weather: {item.weather_tags.join(", ") || "none"}</p>
-              <p>Laundry: {item.status}</p>
-            </div>
-            <div className="actions">
-              <label className="field inline">
-                Status
-                <select
-                  value={item.status}
-                  disabled={busyItemIds.has(item.id)}
-                  onChange={(event) => void handleStatusUpdate(item.id, event.target.value as LaundryStatus)}
-                >
-                  {laundryStatuses.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="uploadButton">
-                Upload image
-                <input type="file" accept="image/*" onChange={(event) => void handleUpload(item.id, event.target.files?.[0] ?? null)} />
-              </label>
-              <button type="button" onClick={() => void handleDelete(item.id)} disabled={busyItemIds.has(item.id)}>
-                Remove piece
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
+        {bulkResult ? <p className="metaNote">{bulkResult}</p> : null}
+        {loading ? <p className="metaNote">Loading wardrobe...</p> : null}
+        {!loading && sortedItems.length === 0 ? (
+          <div className="emptyState wardrobeEmptyState">
+            <h3>Your wardrobe is still empty</h3>
+            <p>Start with 3-5 core pieces or use bulk import so Daily Edit can generate meaningful combinations.</p>
+          </div>
+        ) : null}
+        <div className="items wardrobeItems">
+          {sortedItems.map((item) => (
+            <article className="item wardrobeItem" key={item.id}>
+              <div className="thumbWrap">
+                {item.image_url ? (
+                  <img src={item.image_url} alt={item.name} className="thumb" />
+                ) : (
+                  <div className="thumbPlaceholder">No image</div>
+                )}
+              </div>
+              <div className="wardrobeItemBody">
+                <h3>{item.name}</h3>
+                <p>
+                  {item.category} · {item.formality}
+                </p>
+                <p>Color: {item.color_families.join(", ")}</p>
+                <p>Weather: {item.weather_tags.join(", ") || "none"}</p>
+                <p>Laundry: {item.status}</p>
+              </div>
+              <div className="actions wardrobeItemActions">
+                <label className="field inline">
+                  Status
+                  <select
+                    value={item.status}
+                    disabled={busyItemIds.has(item.id)}
+                    onChange={(event) => void handleStatusUpdate(item.id, event.target.value as LaundryStatus)}
+                  >
+                    {laundryStatuses.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="uploadButton">
+                  Upload image
+                  <input type="file" accept="image/*" onChange={(event) => void handleUpload(item.id, event.target.files?.[0] ?? null)} />
+                </label>
+                <button type="button" onClick={() => void handleDelete(item.id)} disabled={busyItemIds.has(item.id)}>
+                  Remove piece
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
     </section>
   );
 }

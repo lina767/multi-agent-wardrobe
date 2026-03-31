@@ -13,9 +13,9 @@ const moodLabels: Record<string, string> = {
 
 const occasionLabels: Record<string, string> = {
   casual: "Casual",
-  work: "Work",
-  date: "Date",
+  "smart casual": "Smart Casual",
   event: "Event",
+  sport: "Sport",
 };
 
 interface DailyOutfitPageProps {
@@ -144,9 +144,9 @@ export function DailyOutfitPage({ onGeneratedSuggestion }: DailyOutfitPageProps)
           Occasion
           <select value={occasion} onChange={(event) => setOccasion(event.target.value)}>
             <option value="casual">casual</option>
-            <option value="work">work</option>
-            <option value="date">date</option>
+            <option value="smart casual">smart casual</option>
             <option value="event">event</option>
+            <option value="sport">sport</option>
           </select>
         </label>
         <label className="field inline">

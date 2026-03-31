@@ -308,7 +308,7 @@ def _derive_dynamic_weights(*, fit_confidence: float, acceptance_ratio: float, d
     if acceptance_ratio < 0.4:
         weights["wardrobe_coherence"] += 0.06
         weights["style_fit"] -= 0.03
-    if dominant_occasion in {"work", "meeting"}:
+    if dominant_occasion in {"smart casual", "meeting", "event"}:
         weights["context_fit"] += 0.05
     total = sum(max(0.0, w) for w in weights.values())
     if total <= 0:

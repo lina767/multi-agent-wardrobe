@@ -35,7 +35,7 @@ def test_derive_dynamic_weights_prioritizes_context_when_needed() -> None:
     weights = _derive_dynamic_weights(
         fit_confidence=0.3,
         acceptance_ratio=0.2,
-        dominant_occasion="work",
+        dominant_occasion="smart casual",
     )
     assert abs(sum(weights.values()) - 1.0) < 0.001
     assert weights["context_fit"] > weights["style_fit"]
@@ -70,7 +70,7 @@ def test_build_embedding_from_signals_normalizes_style_and_occasion() -> None:
         _signal(
             sid=1,
             occurred_at=now - timedelta(days=1),
-            payload={"style_goals": ["minimal", "classic"], "occasion": "work"},
+            payload={"style_goals": ["minimal", "classic"], "occasion": "smart casual"},
             source="checkin",
             weight=0.9,
         ),

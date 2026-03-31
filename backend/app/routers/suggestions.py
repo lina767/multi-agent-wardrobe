@@ -49,11 +49,10 @@ def _palette_bias_from_profile(profile: UserProfile | None) -> list[ColorFamily]
 
 def _occasion_to_event(occasion: str) -> EventType:
     mapping = {
-        "work": EventType.MEETING,
-        "date": EventType.DATE,
         "casual": EventType.ERRAND,
-        "active": EventType.ERRAND,
+        "smart casual": EventType.MEETING,
         "event": EventType.OTHER,
+        "sport": EventType.ERRAND,
     }
     return mapping.get(occasion.lower(), EventType.OTHER)
 
