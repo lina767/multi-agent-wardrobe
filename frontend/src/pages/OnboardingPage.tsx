@@ -36,7 +36,10 @@ export function OnboardingPage() {
   }
 
   return (
-    <section className="card">
+    <section className="card pageSection">
+      <div className="sectionHead">
+        <p className="eyebrow">Initial Setup</p>
+      </div>
       <h2>Style Onboarding</h2>
       <p>Set your baseline once. Mood and occasion stay in Daily Outfit Intelligence because they change day to day.</p>
       {error ? <p className="error">{error}</p> : null}
@@ -70,7 +73,7 @@ export function OnboardingPage() {
       </form>
       {result ? (
         <div>
-          <p>
+          <p className="metaNote">
             Context confidence: {result.temporal_state.confidence.toFixed(2)} · factors:{" "}
             {result.temporal_state.state_factors.join(" | ") || "none"}
           </p>

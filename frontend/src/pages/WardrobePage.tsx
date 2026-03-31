@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { api } from "../api";
+import { trackEvent } from "../telemetry";
 import type { ColorFamily, DresscodeLevel, WardrobeCategory, WardrobeItem, WardrobeItemCreate } from "../types";
 
 const categories: WardrobeCategory[] = ["top", "bottom", "outer", "shoes", "accessory"];
@@ -75,6 +76,11 @@ export function WardrobePage() {
         season_tags: splitTags(seasonTagsText),
         weather_tags: splitTags(weatherTagsText),
       });
+      trackEvent("wardrobe_item_created", {
+        category: form.category,
+        color_family: form.color_families[0],
+        source: "manual",
+      });
       setForm(initialForm);
       setStyleTagsText("");
       setSeasonTagsText("");
@@ -142,7 +148,10 @@ export function WardrobePage() {
   }
 
   return (
-    <section className="card">
+    <section className="card pageSection">
+      <div className="sectionHead">
+        <p className="eyebrow">Closet Management</p>
+      </div>
       <h2>Wardrobe Archive</h2>
       {error ? <p className="error">{error}</p> : null}
       <form className="grid" onSubmit={handleCreateItem}>
@@ -249,8 +258,14 @@ export function WardrobePage() {
           </select>
         </label>
       </div>
-      {bulkResult ? <p>{bulkResult}</p> : null}
-      {loading ? <p>Loading wardrobe...</p> : null}
+      {bulkResult ? <p className="metaNote">{bulkResult}</p> : null}
+      {loading ? <p className="metaNote">Loading wardrobe...</p> : null}
+      {!loading && sortedItems.length === 0 ? (
+        <div className="emptyState">
+          <h3>Your wardrobe is still empty</h3>
+          <p>Start with 3-5 core pieces or use bulk import so Daily Edit can generate meaningful combinations.</p>
+        </div>
+      ) : null}
       <div className="items">
         {sortedItems.map((item) => (
           <article className="item" key={item.id}>

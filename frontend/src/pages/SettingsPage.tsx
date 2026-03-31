@@ -1,12 +1,20 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import { api } from "../api";
+import { useAuth } from "../auth/AuthProvider";
 
 export function SettingsPage() {
+  const { user } = useAuth();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (user?.email) {
+      setEmail(user.email);
+    }
+  }, [user?.email]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,8 +32,12 @@ export function SettingsPage() {
   }
 
   return (
-    <section className="card">
+    <section className="card pageSection">
+      <div className="sectionHead">
+        <p className="eyebrow">Account</p>
+      </div>
       <h2>Studio Settings</h2>
+      {user?.email ? <p className="metaNote">Currently signed in as {user.email}</p> : null}
       <form className="grid" onSubmit={handleSubmit}>
         <label className="field">
           Email address

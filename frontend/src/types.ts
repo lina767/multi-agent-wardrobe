@@ -56,6 +56,19 @@ export interface Suggestion {
   item_names: string[];
   total_score: number;
   explanation: string;
+  reasoning_breakdown?: {
+    color_score?: number;
+    style_score?: number;
+    context_score?: number;
+    mood_alignment?: number;
+    sustainability?: number;
+  };
+  evidence_tags?: Array<{
+    evidence_id: string;
+    citation_short: string;
+    effect_on_total: number;
+    rationale: string;
+  }>;
 }
 
 export interface SuggestionsResponse {
@@ -72,6 +85,13 @@ export interface SuggestionsResponse {
     };
   };
   suggestions: Suggestion[];
+  color_profile?: {
+    season?: string;
+    undertone?: string;
+    contrast_level?: string;
+    palette?: string[];
+  };
+  scientific_note?: string;
   style_profile?: {
     temporal_state?: {
       life_phase?: string;
@@ -81,6 +101,12 @@ export interface SuggestionsResponse {
     };
     dynamic_weights?: Record<string, number>;
   };
+}
+
+export interface WardrobeAnalyticsResponse {
+  outfit_potential?: number;
+  capsule_suggestions?: Array<{ formula: string; status: Record<string, number> }>;
+  gap_analysis?: Array<{ suggestion: string; estimated_new_outfits: number; reason: string }>;
 }
 
 export interface ProfileCheckinCreate {

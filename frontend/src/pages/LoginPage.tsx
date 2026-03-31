@@ -27,7 +27,8 @@ export function LoginPage() {
 
   return (
     <main className="layout">
-      <section className="card authCard">
+      <section className="card authCard authCardLuxury">
+        <p className="eyebrow">Secure Access</p>
         <h1>Welcome back</h1>
         <p>Enter your email and we will send a secure magic link to your style studio.</p>
         <form className="grid" onSubmit={handleSubmit}>

@@ -83,7 +83,10 @@ export function ProfilePage() {
   }
 
   return (
-    <section className="card">
+    <section className="card pageSection">
+      <div className="sectionHead">
+        <p className="eyebrow">Profile</p>
+      </div>
       <h2>Identity Profile</h2>
       {error ? <p className="error">{error}</p> : null}
       <form className="grid" onSubmit={handleSubmit}>
@@ -119,7 +122,7 @@ export function ProfilePage() {
       </div>
       {profile?.selfie_url ? <img src={profile.selfie_url} alt="Selfie" className="profileSelfie" /> : null}
       {profile?.color_profile ? (
-        <p>
+        <p className="metaNote">
           Color signature: {profile.color_profile.season} / {profile.color_profile.undertone} / {profile.color_profile.contrast_level}
         </p>
       ) : null}

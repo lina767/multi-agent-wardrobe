@@ -9,6 +9,7 @@ import type {
   TemporalState,
   UserProfile,
   WardrobeCategory,
+  WardrobeAnalyticsResponse,
   WardrobeItem,
   WardrobeItemCreate,
 } from "./types";
@@ -134,6 +135,19 @@ export const api = {
       return `/suggestions?${query.toString()}`;
       })(),
     ),
+  sendSuggestionFeedback: (suggestionId: number, payload: { accepted?: boolean; rating?: number; occasion?: string }) =>
+    request<{ status: string }>(`/suggestions/${suggestionId}/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  logOutfit: (payload: { item_ids: number[]; mood?: string; occasion?: string; style_goals?: string[] }) =>
+    request<{ id: number; status: string }>("/outfits/log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  getWardrobeAnalytics: () => request<WardrobeAnalyticsResponse>("/wardrobe/analytics"),
   createProfileCheckin: (payload: ProfileCheckinCreate) =>
     request<ProfileCheckinRead>("/profile/checkins", {
       method: "POST",
