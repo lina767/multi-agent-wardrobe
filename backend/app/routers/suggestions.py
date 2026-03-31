@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.agents.base import AgentContext
+from app.agents.color_agent import ColorAgent
 from app.agents.context_agent import ContextAgent
 from app.agents.orchestrator import OrchestratorAgent
+from app.agents.style_agent import StyleAgent
 from app.agents.wardrobe_agent import WardrobeAgent
 from app.bootstrap import get_default_user_id
 from app.db.models import WardrobeItem
 from app.db.session import get_db
-from app.models.profile import OutfitLog, OutfitSuggestion
+from app.models.profile import OutfitLog, OutfitSuggestion, UserProfile
 
 router = APIRouter(tags=["suggestions"])
 
@@ -24,6 +28,8 @@ def _to_item_dict(row: WardrobeItem) -> dict:
         "style_tags": list(row.style_tags_json or []),
         "season_tags": list(row.season_tags_json or []),
         "is_available": row.is_available,
+        "material": row.material,
+        "image_path": row.image_path,
         "formality_score": 0.7 if row.formality in {"business", "formal"} else 0.5 if row.formality == "smart_casual" else 0.3,
     }
 
@@ -39,16 +45,30 @@ async def get_suggestions(
     rows = db.query(WardrobeItem).filter(WardrobeItem.user_id == user_id).all()
     if not rows:
         raise HTTPException(status_code=400, detail="No wardrobe items found. Add items first.")
+    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
     context = AgentContext(
         user_id=user_id,
         wardrobe_items=[_to_item_dict(r) for r in rows],
         mood=mood.lower(),
         occasion=occasion.lower(),
         location=location,
+        shared={},
     )
     wardrobe_output = await WardrobeAgent().run(context)
     context_output = await ContextAgent().run(context)
     context.weather = context_output.payload.get("weather", {})
+    context.shared["context_filters"] = context_output.payload
+    if profile and profile.color_palette:
+        context.shared["color_profile"] = {
+            "season": profile.color_season,
+            "undertone": profile.undertone,
+            "contrast_level": profile.contrast_level,
+            "palette": profile.color_palette,
+        }
+    color_output = await ColorAgent().run(context)
+    style_output = await StyleAgent().run(context)
+    context.shared["item_color_scores"] = color_output.payload.get("item_color_scores", {})
+    context.shared["mood_formulas"] = style_output.payload.get("mood_formulas", {})
     orchestrated = await OrchestratorAgent().run(context)
     saved = []
     for suggestion in orchestrated.payload["suggestions"]:
@@ -69,11 +89,14 @@ async def get_suggestions(
     db.commit()
     return {
         "context": context_output.payload,
+        "style_profile": style_output.payload.get("style_profile", {}),
+        "color_profile": color_output.payload.get("color_profile", {}),
         "wardrobe": {
             "outfit_potential": wardrobe_output.payload["outfit_potential"],
             "capsule_suggestions": wardrobe_output.payload["capsule_suggestions"],
         },
         "suggestions": saved[:3],
+        "scientific_note": "We reduce choice overload by returning only 3 ranked outfits.",
     }
 
 
@@ -83,12 +106,7 @@ def log_outfit(body: dict, db: Session = Depends(get_db)) -> dict:
     item_ids = body.get("item_ids", [])
     model = OutfitLog(
         user_id=user_id,
-        item_ids=item_ids,
-        occasion=body.get("occasion"),
-        mood=body.get("mood"),
-        weather_temp=body.get("weather_temp"),
-        weather_condition=body.get("weather_condition"),
-        item_ids_json=str(item_ids),
+        item_ids_json=json.dumps(item_ids),
         context_json=body,
     )
     db.add(model)

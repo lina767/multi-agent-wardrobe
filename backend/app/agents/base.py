@@ -14,6 +14,7 @@ class AgentContext:
     occasion: str
     location: str | None = None
     weather: dict[str, Any] | None = None
+    shared: dict[str, Any] = field(default_factory=dict)
     now: datetime = field(default_factory=datetime.utcnow)
 
 

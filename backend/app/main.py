@@ -57,7 +57,10 @@ app.include_router(analytics.router, prefix="/api/v1")
 
 APP_DIR = Path(__file__).resolve().parent
 BASE_DIR = APP_DIR.parent
-FRONTEND_DIR = APP_DIR / "frontend"
+ROOT_DIR = BASE_DIR.parent
+FRONTEND_DIR = ROOT_DIR / "frontend"
+if not FRONTEND_DIR.exists():
+    FRONTEND_DIR = APP_DIR / "frontend"
 MEDIA_DIR = BASE_DIR / "data"
 FRONTEND_DIR.mkdir(parents=True, exist_ok=True)
 MEDIA_DIR.mkdir(parents=True, exist_ok=True)

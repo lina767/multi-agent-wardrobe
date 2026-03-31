@@ -47,6 +47,18 @@
       .track { background: #efe7dd; border-radius: 999px; overflow: hidden; height: 8px; }
       .fill { height: 8px; background: linear-gradient(90deg, var(--sage), var(--brown)); }
       .hint { margin-top: 18px; color: #6d6155; font-size: 14px; }
+      .onboarding { border: 1px dashed #d7c9b5; background: #fffaf1; }
+      .steps { display: flex; gap: 8px; margin-bottom: 12px; }
+      .step { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; }
+      .step.active { background: var(--brown); color: #fff; border-color: var(--brown); }
+      .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+      .btn { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 9px 12px; cursor: pointer; }
+      .btn.primary { background: var(--brown); color: #fff; border-color: var(--brown); }
+      .palette { display: flex; gap: 6px; margin-top: 8px; }
+      .swatch { width: 22px; height: 22px; border-radius: 50%; border: 1px solid #d5c8b4; }
+      .quiz-grid { display: grid; gap: 10px; margin-top: 10px; }
+      .quiz-item { border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: #fff; }
+      .muted { color: #7b6e60; font-size: 13px; }
       @media (max-width: 520px) { .app { padding: 18px 12px 30px; } }
     </style>
   </head>
@@ -57,6 +69,24 @@
         <div id="weatherBadge" class="weather">Weather: --</div>
       </div>
       <p class="sub">Reduce decision fatigue: we rank only 3 looks so getting dressed feels effortless.</p>
+      <section class="card">
+        <h2 style="font-size: 1.45rem; color: var(--brown)">Onboarding</h2>
+        <p class="sub" style="margin: 8px 0 0">3 quick steps to personalize your wardrobe intelligence.</p>
+        <div class="card onboarding">
+          <div class="steps">
+            <span class="step active">1. Selfie color analysis</span>
+            <span class="step">2. Quick wardrobe scan</span>
+            <span class="step">3. Style A/B quiz</span>
+          </div>
+          <div class="row">
+            <input id="selfieInput" type="file" accept="image/*" />
+            <button id="analyzeSelfieBtn" class="btn primary">Analyze selfie</button>
+          </div>
+          <div id="colorProfileResult" class="muted" style="margin-top: 8px"></div>
+          <div id="palette" class="palette"></div>
+          <div class="quiz-grid" id="styleQuiz"></div>
+        </div>
+      </section>
       <section class="card">
         <span class="label">How do you want to feel today?</span>
         <div id="moodStrip" class="moods"></div>
@@ -80,8 +110,16 @@
         { id: "focus", icon: "🎯", label: "Focus" },
       ];
       const occasions = ["casual", "work", "date", "event", "active"];
+      const quizPairs = [
+        ["Structured tailoring", "Soft drape"],
+        ["Minimal monochrome", "Colorful contrast"],
+        ["Classic staples", "Trend accents"],
+        ["Clean lines", "Texture mixing"],
+        ["Polished shoes", "Relaxed sneakers"],
+      ];
       let currentMood = "focus";
       let currentOccasion = "casual";
+      const quizAnswers = [];
 
       function renderChips() {
         const moodStrip = document.getElementById("moodStrip");
@@ -124,6 +162,41 @@
         `).join("");
       }
 
+      async function analyzeSelfie() {
+        const input = document.getElementById("selfieInput");
+        const result = document.getElementById("colorProfileResult");
+        const palette = document.getElementById("palette");
+        if (!input.files || !input.files[0]) {
+          result.textContent = "Upload a selfie first.";
+          return;
+        }
+        const fd = new FormData();
+        fd.append("selfie", input.files[0]);
+        result.textContent = "Analyzing with 12-season color model...";
+        const res = await fetch(`${API_BASE}/api/v1/profile/color-analysis`, { method: "POST", body: fd });
+        if (!res.ok) {
+          result.textContent = "Color analysis failed. Please retry.";
+          return;
+        }
+        const data = await res.json();
+        result.textContent = `Season: ${data.season} · Undertone: ${data.undertone} · Contrast: ${data.contrast_level}`;
+        palette.innerHTML = (data.palette || []).map((hex) => `<span class="swatch" title="${hex}" style="background:${hex}"></span>`).join("");
+        await loadSuggestions();
+      }
+
+      function renderQuiz() {
+        const el = document.getElementById("styleQuiz");
+        el.innerHTML = quizPairs.map((pair, idx) => `
+          <div class="quiz-item">
+            <div class="muted">Choice ${idx + 1}</div>
+            <div class="row" style="margin-top:6px">
+              <button class="btn" data-quiz="${idx}" data-val="a">${pair[0]}</button>
+              <button class="btn" data-quiz="${idx}" data-val="b">${pair[1]}</button>
+            </div>
+          </div>
+        `).join("");
+      }
+
       document.addEventListener("click", (event) => {
         const mood = event.target.getAttribute("data-mood");
         const occ = event.target.getAttribute("data-occ");
@@ -133,9 +206,16 @@
           renderChips();
           loadSuggestions();
         }
+        const q = event.target.getAttribute("data-quiz");
+        const val = event.target.getAttribute("data-val");
+        if (q !== null && val) {
+          quizAnswers[Number(q)] = val;
+        }
       });
 
+      document.getElementById("analyzeSelfieBtn").addEventListener("click", analyzeSelfie);
       renderChips();
+      renderQuiz();
       loadSuggestions();
     </script>
   </body>
