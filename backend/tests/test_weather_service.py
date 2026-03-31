@@ -31,39 +31,48 @@ def test_weather_service_fetch_current_success(monkeypatch) -> None:
     monkeypatch.setattr(settings, "weather_api_key", "test-key")
 
     def _mock_urlopen(url: str, timeout: int = 4):
-        if "data/2.5/weather" in url:
+        if "/v1/current.json" in url:
             return _MockHTTPResponse(
                 {
-                    "weather": [{"main": "Clouds"}],
-                    "main": {"temp": 12.5, "feels_like": 10.2},
-                    "wind": {"speed": 4.0},
-                    "rain": {"1h": 0.0},
-                    "coord": {"lat": 52.52, "lon": 13.405},
-                    "name": "Berlin",
+                    "location": {"name": "Berlin"},
+                    "current": {
+                        "temp_c": 12.5,
+                        "feelslike_c": 10.2,
+                        "uv": 5.4,
+                        "wind_kph": 14.4,
+                        "precip_mm": 0.0,
+                        "is_day": 1,
+                        "condition": {"text": "Partly cloudy", "code": 1003},
+                    },
                 }
             )
-        if "data/2.5/forecast" in url:
+        if "/v1/forecast.json" in url:
             return _MockHTTPResponse(
                 {
-                    "list": [
-                        {"pop": 0.1, "weather": [{"main": "Clouds"}]},
-                        {"pop": 0.3, "weather": [{"main": "Rain"}]},
-                        {"pop": 0.2, "weather": [{"main": "Clouds"}]},
-                    ]
+                    "forecast": {
+                        "forecastday": [
+                            {
+                                "day": {
+                                    "daily_chance_of_rain": 30,
+                                    "daily_chance_of_snow": 0,
+                                    "condition": {"text": "Patchy rain possible", "code": 1063},
+                                }
+                            }
+                        ]
+                    }
                 }
             )
-        if "data/3.0/onecall" in url:
-            return _MockHTTPResponse({"current": {"uvi": 5.4}})
         raise AssertionError(f"Unexpected URL: {url}")
 
     monkeypatch.setattr("app.services.weather.urlopen", _mock_urlopen)
     result = asyncio.run(WeatherService().fetch_current("Berlin"))
-    assert result["condition"] == "Clouds"
+    assert result["condition"] == "partly_cloudy"
+    assert result["condition_raw"] == "Partly cloudy"
     assert result["temperature_c"] == 12.5
     assert result["feels_like_c"] == 10.2
     assert result["rain_probability"] == 0.3
     assert result["uv_index"] == 5.4
-    assert result["forecast_summary"] == "Clouds, Rain"
+    assert result["forecast_summary"] == "Patchy rain possible"
     assert result["wind_speed_kph"] == 14.4
 
 
@@ -77,3 +86,46 @@ def test_weather_service_returns_fallback_on_exception(monkeypatch) -> None:
     result = asyncio.run(WeatherService().fetch_current("Hamburg"))
     assert result["location"] == "Hamburg"
     assert result["condition"] == "unknown"
+
+
+def test_weather_service_normalizes_snow_condition(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "weather_api_key", "test-key")
+
+    def _mock_urlopen(url: str, timeout: int = 4):
+        if "/v1/current.json" in url:
+            return _MockHTTPResponse(
+                {
+                    "location": {"name": "Munich"},
+                    "current": {
+                        "temp_c": -1.0,
+                        "feelslike_c": -4.0,
+                        "uv": 1.0,
+                        "wind_kph": 8.0,
+                        "precip_mm": 0.8,
+                        "is_day": 0,
+                        "condition": {"text": "Moderate snow", "code": 1219},
+                    },
+                }
+            )
+        if "/v1/forecast.json" in url:
+            return _MockHTTPResponse(
+                {
+                    "forecast": {
+                        "forecastday": [
+                            {
+                                "day": {
+                                    "daily_chance_of_rain": 20,
+                                    "daily_chance_of_snow": 75,
+                                    "condition": {"text": "Moderate snow", "code": 1219},
+                                }
+                            }
+                        ]
+                    }
+                }
+            )
+        raise AssertionError(f"Unexpected URL: {url}")
+
+    monkeypatch.setattr("app.services.weather.urlopen", _mock_urlopen)
+    result = asyncio.run(WeatherService().fetch_current("Munich"))
+    assert result["condition"] == "snow"
+    assert result["rain_probability"] == 0.75

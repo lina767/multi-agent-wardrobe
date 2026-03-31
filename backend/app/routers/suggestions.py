@@ -83,6 +83,8 @@ async def get_suggestions(
 
     req = RecommendationRequest(
         context=ContextInput(
+            condition=weather_data.get("condition"),
+            condition_raw=weather_data.get("condition_raw"),
             temperature_c=weather_data.get("temperature_c"),
             feels_like_c=weather_data.get("feels_like_c"),
             rain_probability=weather_data.get("rain_probability"),

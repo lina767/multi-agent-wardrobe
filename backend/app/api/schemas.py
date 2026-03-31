@@ -9,6 +9,7 @@ from app.domain.enums import (
     ColorFamily,
     DresscodeLevel,
     EventType,
+    ItemStatus,
     MoodEnergy,
     WardrobeCategory,
 )
@@ -25,6 +26,7 @@ class WardrobeItemBase(BaseModel):
     season_tags: list[str] = Field(default_factory=list, description="e.g. spring, winter")
     weather_tags: list[str] = Field(default_factory=list, description="e.g. cold, rain, wind")
     is_available: bool = True
+    status: ItemStatus = ItemStatus.CLEAN
     style_tags: list[str] = Field(default_factory=list, description="minimalist, classic, etc.")
     brand: str | None = None
     size_label: str | None = None
@@ -46,6 +48,7 @@ class WardrobeItemUpdate(BaseModel):
     season_tags: list[str] | None = None
     weather_tags: list[str] | None = None
     is_available: bool | None = None
+    status: ItemStatus | None = None
     style_tags: list[str] | None = None
     brand: str | None = None
     size_label: str | None = None
@@ -67,6 +70,8 @@ class WardrobeItemRead(WardrobeItemBase):
 
 
 class ContextInput(BaseModel):
+    condition: str | None = Field(None, description="Normalized weather condition (e.g. sunny, rain, snow)")
+    condition_raw: str | None = Field(None, description="Provider-native weather condition label")
     temperature_c: float | None = Field(None, description="Outdoor temperature Celsius")
     feels_like_c: float | None = Field(None, description="Perceived outdoor temperature Celsius")
     rain_probability: float | None = Field(None, ge=0.0, le=1.0, description="Rain probability in range 0..1")

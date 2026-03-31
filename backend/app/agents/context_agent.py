@@ -17,6 +17,7 @@ class ContextAgent:
     ) -> AgentEvaluationResult:
         temp = pipeline.context.temperature_c
         feels_like = pipeline.context.feels_like_c
+        condition = (pipeline.context.condition or "").strip().lower()
         rain_probability = pipeline.context.rain_probability
         uv_index = pipeline.context.uv_index
         wind_speed_kph = pipeline.context.wind_speed_kph
@@ -32,6 +33,13 @@ class ContextAgent:
             score = 0.55
             reasons = ["Warm weather with unnecessary outer layer."]
 
+        if condition in {"rain", "sleet"} and rain_probability is None:
+            rain_probability = 0.65
+        if condition == "snow" and rain_probability is None:
+            rain_probability = 0.8
+        if condition == "storm":
+            rain_probability = max(rain_probability or 0.0, 0.9)
+
         if rain_probability is not None and rain_probability >= 0.55:
             has_water_resistant = any(
                 any(tag in (it.material or "").lower() for tag in ("water", "rain", "nylon", "shell"))
@@ -44,6 +52,19 @@ class ContextAgent:
             else:
                 score -= 0.17
                 reasons.append("High rain probability without water-resistant pieces.")
+
+        if condition == "snow":
+            has_warm_material = any(
+                any(tag in (it.material or "").lower() for tag in ("wool", "fleece", "down", "thermal"))
+                or any(tag in it.name.lower() for tag in ("puffer", "coat", "parka", "boot"))
+                for it in candidate.items
+            )
+            if has_warm_material:
+                score += 0.08
+                reasons.append("Snow conditions are supported by warm protective pieces.")
+            else:
+                score -= 0.2
+                reasons.append("Snow conditions without clearly warm protective pieces.")
 
         if uv_index is not None and uv_index >= 6:
             has_uv_accessory = any(
@@ -70,6 +91,10 @@ class ContextAgent:
             else:
                 score += 0.05
                 reasons.append("Silhouette remains stable in strong wind.")
+
+        if condition == "storm":
+            score -= 0.12
+            reasons.append("Storm conditions require higher protection and lower exposure.")
         return AgentEvaluationResult(
             agent_name="context",
             partial_scores={"context_fit": max(0.0, min(1.0, score))},
