@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.agents.wardrobe_agent import WardrobeAgent
-from app.bootstrap import get_default_user_id
 from app.db.models import WardrobeItem
+from app.dependencies import get_current_user_id
 from app.models.profile import UserProfile
 from app.db.session import get_db
 
@@ -13,8 +13,10 @@ router = APIRouter(tags=["analytics"])
 
 
 @router.get("/wardrobe/analytics")
-def wardrobe_analytics(db: Session = Depends(get_db)) -> dict:
-    user_id = get_default_user_id(db)
+def wardrobe_analytics(
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+) -> dict:
     rows = db.query(WardrobeItem).filter(WardrobeItem.user_id == user_id).all()
     profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
     items = [

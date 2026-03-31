@@ -10,12 +10,21 @@ _INVENTORY_COLUMNS: dict[str, str] = {
     "purchase_price": "REAL",
     "notes": "TEXT",
     "image_path": "TEXT",
+    "weather_tags_json": "JSON",
 }
 
 _OUTFIT_LOG_COLUMNS: dict[str, str] = {
     "item_ids_json": "TEXT",
     "context_json": "JSON",
     "worn_at": "DATETIME",
+}
+
+_USER_COLUMNS: dict[str, str] = {
+    "supabase_user_id": "TEXT",
+    "email": "TEXT",
+    "email_verified_at": "DATETIME",
+    "last_login_at": "DATETIME",
+    "is_active": "BOOLEAN DEFAULT 1",
 }
 
 
@@ -30,6 +39,17 @@ def ensure_inventory_schema(db: Session) -> None:
         if col in cols:
             continue
         db.execute(text(f"ALTER TABLE wardrobe_items ADD COLUMN {col} {sql_type}"))
+    db.commit()
+
+
+def ensure_user_schema(db: Session) -> None:
+    cols = _existing_columns(db, "users")
+    for col, sql_type in _USER_COLUMNS.items():
+        if col in cols:
+            continue
+        db.execute(text(f"ALTER TABLE users ADD COLUMN {col} {sql_type}"))
+    db.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_supabase_user_id_unique ON users(supabase_user_id)"))
+    db.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email_unique ON users(email)"))
     db.commit()
 
 

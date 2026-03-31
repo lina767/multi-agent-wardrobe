@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.api.schemas import ContextInput, RecommendationRequest
-from app.bootstrap import get_default_user_id
 from app.db.models import WardrobeItem
 from app.db.session import get_db
+from app.dependencies import get_current_user_id
 from app.models.profile import OutfitLog, OutfitSuggestion, UserProfile
 from app.domain.enums import EventType, MoodEnergy
 from app.services.recommendation_service import build_recommendations
@@ -63,8 +63,8 @@ async def get_suggestions(
     occasion: str = Query(default="casual"),
     location: str | None = Query(default=None),
     db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
 ) -> dict:
-    user_id = get_default_user_id(db)
     rows = db.query(WardrobeItem).filter(WardrobeItem.user_id == user_id).all()
     if not rows:
         raise HTTPException(status_code=400, detail="No wardrobe items found. Add items first.")
@@ -165,8 +165,11 @@ async def get_suggestions(
 
 
 @router.post("/outfits/log")
-def log_outfit(body: dict, db: Session = Depends(get_db)) -> dict:
-    user_id = get_default_user_id(db)
+def log_outfit(
+    body: dict,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+) -> dict:
     item_ids = body.get("item_ids", [])
     model = OutfitLog(
         user_id=user_id,
@@ -193,8 +196,12 @@ def log_outfit(body: dict, db: Session = Depends(get_db)) -> dict:
 
 
 @router.post("/suggestions/{suggestion_id}/feedback")
-def suggestion_feedback(suggestion_id: int, body: dict, db: Session = Depends(get_db)) -> dict:
-    user_id = get_default_user_id(db)
+def suggestion_feedback(
+    suggestion_id: int,
+    body: dict,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+) -> dict:
     suggestion = (
         db.query(OutfitSuggestion)
         .filter(OutfitSuggestion.id == suggestion_id, OutfitSuggestion.user_id == user_id)

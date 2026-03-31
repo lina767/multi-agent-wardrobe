@@ -23,6 +23,7 @@ class WardrobeItemBase(BaseModel):
     color_families: list[ColorFamily] = Field(default_factory=list)
     formality: DresscodeLevel = DresscodeLevel.CASUAL
     season_tags: list[str] = Field(default_factory=list, description="e.g. spring, winter")
+    weather_tags: list[str] = Field(default_factory=list, description="e.g. cold, rain, wind")
     is_available: bool = True
     style_tags: list[str] = Field(default_factory=list, description="minimalist, classic, etc.")
     brand: str | None = None
@@ -43,6 +44,7 @@ class WardrobeItemUpdate(BaseModel):
     color_families: list[ColorFamily] | None = None
     formality: DresscodeLevel | None = None
     season_tags: list[str] | None = None
+    weather_tags: list[str] | None = None
     is_available: bool | None = None
     style_tags: list[str] | None = None
     brand: str | None = None
@@ -220,3 +222,39 @@ class ColorProfileFeedbackRead(BaseModel):
     corrected_contrast_level: str | None = None
     note: str | None = None
     created_at: datetime
+
+
+class ProfileRead(BaseModel):
+    name: str | None = None
+    age: int | None = Field(default=None, ge=1, le=120)
+    life_phase: str | None = None
+    selfie_url: str | None = None
+    figure_analysis: str | None = None
+    color_profile: dict[str, Any] | None = None
+
+
+class ProfileUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    age: int | None = Field(default=None, ge=1, le=120)
+    life_phase: str | None = Field(default=None, max_length=120)
+    figure_analysis: str | None = None
+
+
+class EmailUpdate(BaseModel):
+    email: str = Field(..., min_length=5, max_length=255)
+
+
+class OnboardingRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    age: int | None = Field(default=None, ge=1, le=120)
+    life_phase: str | None = Field(default=None, max_length=120)
+    figure_analysis: str | None = None
+    mood: str = "focus"
+    occasion: str = "casual"
+    location: str | None = None
+
+
+class OnboardingResponse(BaseModel):
+    profile: ProfileRead
+    temporal_state: TemporalStateRead
+    suggestions: list[dict[str, Any]]

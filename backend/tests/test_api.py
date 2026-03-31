@@ -44,6 +44,19 @@ def test_health(client: TestClient) -> None:
     assert r.json()["status"] == "ok"
 
 
+def test_auth_me_returns_current_user(client: TestClient) -> None:
+    response = client.get("/api/v1/auth/me")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["email"] == "test-user@example.com"
+    assert payload["is_active"] is True
+
+
+def test_wardrobe_requires_auth(unauth_client: TestClient) -> None:
+    response = unauth_client.get("/api/v1/wardrobe/items")
+    assert response.status_code == 401
+
+
 def test_legacy_health_alias(client: TestClient) -> None:
     r = client.get("/v1/health")
     assert r.status_code == 200

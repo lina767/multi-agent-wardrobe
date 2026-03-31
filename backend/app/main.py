@@ -11,9 +11,9 @@ from app.api.routes import feedback, health, recommendations, wardrobe
 from app.bootstrap import ensure_default_user
 from app.config import settings
 from app.db.session import init_db
-from app.db.migrate import ensure_agent_schema, ensure_inventory_schema, ensure_temporal_schema
+from app.db.migrate import ensure_agent_schema, ensure_inventory_schema, ensure_temporal_schema, ensure_user_schema
 from app.logging_config import configure_logging
-from app.routers import analytics, profile, suggestions
+from app.routers import analytics, auth, profile, suggestions
 
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -28,6 +28,7 @@ async def lifespan(app: FastAPI):
     db = db_session.SessionLocal()
     try:
         ensure_inventory_schema(db)
+        ensure_user_schema(db)
         ensure_agent_schema(db)
         ensure_temporal_schema(db)
         ensure_default_user(db)
@@ -58,6 +59,7 @@ app.include_router(feedback.router, prefix=API_PREFIX)
 app.include_router(profile.router, prefix=API_PREFIX)
 app.include_router(suggestions.router, prefix=API_PREFIX)
 app.include_router(analytics.router, prefix=API_PREFIX)
+app.include_router(auth.router, prefix=API_PREFIX)
 
 # Keep legacy paths available but hidden from OpenAPI.
 app.include_router(health.router, prefix=LEGACY_PREFIX, include_in_schema=False)
@@ -67,6 +69,7 @@ app.include_router(feedback.router, prefix=LEGACY_PREFIX, include_in_schema=Fals
 app.include_router(profile.router, prefix=LEGACY_PREFIX, include_in_schema=False)
 app.include_router(suggestions.router, prefix=LEGACY_PREFIX, include_in_schema=False)
 app.include_router(analytics.router, prefix=LEGACY_PREFIX, include_in_schema=False)
+app.include_router(auth.router, prefix=LEGACY_PREFIX, include_in_schema=False)
 
 APP_DIR = Path(__file__).resolve().parent
 BASE_DIR = APP_DIR.parent

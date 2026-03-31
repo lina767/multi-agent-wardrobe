@@ -10,6 +10,7 @@ export interface WardrobeItem {
   color_families: ColorFamily[];
   formality: DresscodeLevel;
   season_tags: string[];
+  weather_tags: string[];
   is_available: boolean;
   style_tags: string[];
   brand?: string | null;
@@ -27,6 +28,7 @@ export interface WardrobeItemCreate {
   color_families: ColorFamily[];
   formality: DresscodeLevel;
   season_tags: string[];
+  weather_tags: string[];
   is_available: boolean;
   style_tags: string[];
   brand?: string;
@@ -54,6 +56,31 @@ export interface Suggestion {
   item_names: string[];
   total_score: number;
   explanation: string;
+}
+
+export interface SuggestionsResponse {
+  context?: {
+    mood?: string;
+    occasion?: string;
+    weather?: {
+      temperature_c?: number;
+      feels_like_c?: number;
+      rain_probability?: number;
+      uv_index?: number;
+      wind_speed_kph?: number;
+      forecast_summary?: string;
+    };
+  };
+  suggestions: Suggestion[];
+  style_profile?: {
+    temporal_state?: {
+      life_phase?: string;
+      dominant_occasion?: string;
+      fit_confidence?: number;
+      state_factors?: string[];
+    };
+    dynamic_weights?: Record<string, number>;
+  };
 }
 
 export interface ProfileCheckinCreate {
@@ -88,4 +115,28 @@ export interface TemporalState {
   state_factors: string[];
   confidence: number;
   updated_at: string;
+}
+
+export interface UserProfile {
+  name: string | null;
+  age: number | null;
+  life_phase: string | null;
+  selfie_url: string | null;
+  figure_analysis: string | null;
+  color_profile: {
+    season?: string;
+    undertone?: string;
+    contrast_level?: string;
+    palette?: string[];
+  } | null;
+}
+
+export interface OnboardingResponse {
+  profile: UserProfile;
+  temporal_state: TemporalState;
+  suggestions: Array<{
+    item_names: string[];
+    total_score: number;
+    explanation: string;
+  }>;
 }

@@ -1,13 +1,13 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.schemas import WardrobeItemCreate, WardrobeItemRead, WardrobeItemUpdate
 from app.agents.wardrobe_agent import WardrobeAgent
-from app.bootstrap import get_default_user_id
 from app.db.models import WardrobeItem
 from app.db.session import get_db
+from app.dependencies import get_current_user_id
 from app.domain.enums import ColorFamily, DresscodeLevel, WardrobeCategory
 from app.models.profile import UserProfile
 from app.services.temporal_intelligence import record_style_signal
@@ -18,15 +18,37 @@ ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
 
 
 @router.get("/items", response_model=list[WardrobeItemRead])
-def list_items(db: Session = Depends(get_db)) -> list[WardrobeItemRead]:
-    uid = get_default_user_id(db)
-    rows = db.query(WardrobeItem).filter(WardrobeItem.user_id == uid).order_by(WardrobeItem.id).all()
+def list_items(
+    category: str | None = Query(default=None),
+    color_family: str | None = Query(default=None),
+    weather_tag: str | None = Query(default=None),
+    sort_by: str = Query(default="id"),
+    sort_dir: str = Query(default="asc"),
+    db: Session = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
+) -> list[WardrobeItemRead]:
+    query = db.query(WardrobeItem).filter(WardrobeItem.user_id == uid)
+    if category:
+        query = query.filter(WardrobeItem.category == category)
+    rows = query.all()
+    if color_family:
+        rows = [row for row in rows if color_family in (row.color_families_json or [])]
+    if weather_tag:
+        rows = [row for row in rows if weather_tag in (row.weather_tags_json or [])]
+    reverse = sort_dir.lower() == "desc"
+    if sort_by == "name":
+        rows.sort(key=lambda row: row.name.lower(), reverse=reverse)
+    else:
+        rows.sort(key=lambda row: row.id, reverse=reverse)
     return [_serialize_row(r) for r in rows]
 
 
 @router.post("/items", response_model=WardrobeItemRead, status_code=status.HTTP_201_CREATED)
-def create_item(body: WardrobeItemCreate, db: Session = Depends(get_db)) -> WardrobeItemRead:
-    uid = get_default_user_id(db)
+def create_item(
+    body: WardrobeItemCreate,
+    db: Session = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
+) -> WardrobeItemRead:
     row = WardrobeItem(
         user_id=uid,
         name=body.name,
@@ -34,6 +56,7 @@ def create_item(body: WardrobeItemCreate, db: Session = Depends(get_db)) -> Ward
         color_families_json=[c.value for c in body.color_families],
         formality=body.formality.value,
         season_tags_json=body.season_tags,
+        weather_tags_json=body.weather_tags,
         is_available=body.is_available,
         style_tags_json=body.style_tags,
         brand=body.brand,
@@ -50,8 +73,12 @@ def create_item(body: WardrobeItemCreate, db: Session = Depends(get_db)) -> Ward
 
 
 @router.patch("/items/{item_id}", response_model=WardrobeItemRead)
-def update_item(item_id: int, body: WardrobeItemUpdate, db: Session = Depends(get_db)) -> WardrobeItemRead:
-    uid = get_default_user_id(db)
+def update_item(
+    item_id: int,
+    body: WardrobeItemUpdate,
+    db: Session = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
+) -> WardrobeItemRead:
     row = db.query(WardrobeItem).filter(WardrobeItem.id == item_id, WardrobeItem.user_id == uid).first()
     if not row:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -64,6 +91,8 @@ def update_item(item_id: int, body: WardrobeItemUpdate, db: Session = Depends(ge
         data["formality"] = data["formality"].value
     if "season_tags" in data and data["season_tags"] is not None:
         data["season_tags_json"] = data.pop("season_tags")
+    if "weather_tags" in data and data["weather_tags"] is not None:
+        data["weather_tags_json"] = data.pop("weather_tags")
     if "style_tags" in data and data["style_tags"] is not None:
         data["style_tags_json"] = data.pop("style_tags")
     for k, v in data.items():
@@ -75,8 +104,11 @@ def update_item(item_id: int, body: WardrobeItemUpdate, db: Session = Depends(ge
 
 
 @router.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_item(item_id: int, db: Session = Depends(get_db)) -> None:
-    uid = get_default_user_id(db)
+def delete_item(
+    item_id: int,
+    db: Session = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
+) -> None:
     row = db.query(WardrobeItem).filter(WardrobeItem.id == item_id, WardrobeItem.user_id == uid).first()
     if not row:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -91,8 +123,8 @@ async def upload_item_image(
     item_id: int,
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
 ) -> WardrobeItemRead:
-    uid = get_default_user_id(db)
     row = db.query(WardrobeItem).filter(WardrobeItem.id == item_id, WardrobeItem.user_id == uid).first()
     if not row:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -124,8 +156,8 @@ async def bulk_upload_items(
     formality: str = Form("casual"),
     color_family: str = Form("neutral"),
     db: Session = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
 ) -> dict:
-    uid = get_default_user_id(db)
     if not images:
         raise HTTPException(status_code=400, detail="No images provided")
     try:
@@ -154,6 +186,7 @@ async def bulk_upload_items(
             color_families_json=[parsed_color],
             formality=parsed_formality,
             season_tags_json=[],
+            weather_tags_json=[],
             is_available=True,
             style_tags_json=[],
             quantity=1,
@@ -224,6 +257,7 @@ def _serialize_row(row: WardrobeItem) -> WardrobeItemRead:
         color_families=[ColorFamily(c) for c in (row.color_families_json or [])],
         formality=DresscodeLevel(row.formality),
         season_tags=list(row.season_tags_json or []),
+        weather_tags=list(row.weather_tags_json or []),
         is_available=row.is_available,
         style_tags=list(row.style_tags_json or []),
         brand=row.brand,

@@ -11,8 +11,11 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     storage_backend: str = "local"  # local | supabase
     supabase_url: str | None = None
+    supabase_anon_key: str | None = None
     supabase_service_key: str | None = None
+    supabase_jwt_secret: str | None = None
     supabase_bucket: str = "wardrobe-images"
+    auth_redirect_url: str = "http://127.0.0.1:8000/auth/callback"
     anthropic_api_key: str | None = None
     weather_api_key: str | None = None
     agent_color_model: str = "claude-sonnet-4-20250514"

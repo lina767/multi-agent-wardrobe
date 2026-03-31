@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.schemas import RecommendationRequest, RecommendationResponse
-from app.bootstrap import get_default_user_id
 from app.db.session import get_db
+from app.dependencies import get_current_user_id
 from app.logging_config import log_metric
 from app.services.recommendation_service import build_recommendations
 
@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 def post_recommendations(
     body: RecommendationRequest,
     db: Session = Depends(get_db),
+    uid: int = Depends(get_current_user_id),
 ) -> RecommendationResponse:
-    uid = get_default_user_id(db)
     t0 = time.perf_counter()
     out = build_recommendations(db, uid, body)
     elapsed_ms = (time.perf_counter() - t0) * 1000

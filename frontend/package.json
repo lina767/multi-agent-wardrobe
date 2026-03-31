@@ -10,8 +10,10 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.9.3"
   },
   "devDependencies": {
     "@testing-library/react": "^16.0.0",
