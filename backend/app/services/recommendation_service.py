@@ -1,6 +1,8 @@
 """End-to-end recommendation pipeline."""
 
+import asyncio
 import json
+import threading
 from datetime import UTC, datetime
 from typing import Any
 
@@ -23,6 +25,28 @@ from app.domain.entities import OutfitCandidateDTO, RecommendationPipelineInput,
 from app.domain.enums import ColorFamily, DresscodeLevel, WardrobeCategory
 from app.evidence.rules import EvidenceRuleEngine
 from app.db.models import FeedbackEvent, OutfitLog, WardrobeItem
+
+
+def _run_async(coro: Any) -> Any:
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+    result: dict[str, Any] = {"value": None, "error": None}
+
+    def _runner() -> None:
+        try:
+            result["value"] = asyncio.run(coro)
+        except Exception as exc:  # pragma: no cover
+            result["error"] = exc
+
+    thread = threading.Thread(target=_runner, daemon=True)
+    thread.start()
+    thread.join()
+    if result["error"]:
+        raise result["error"]
+    return result["value"]
 
 
 def _item_to_dto(row: WardrobeItem) -> WardrobeItemDTO:
@@ -69,8 +93,8 @@ def _history_snapshot(db: Session, user_id: int, limit: int = 30) -> tuple[list[
             key = tuple(sorted(int(i) for i in ids))
             rating_by_combo[key] = int(f.rating)
 
-    tags: list[str] = []
-    history: list[dict[str, Any]] = []
+    parsed_rows: list[tuple[tuple[int, ...], OutfitLog]] = []
+    wanted_item_ids: set[int] = set()
     for r in rows:
         try:
             ids = json.loads(r.item_ids_json)
@@ -78,14 +102,27 @@ def _history_snapshot(db: Session, user_id: int, limit: int = 30) -> tuple[list[
             continue
         if not isinstance(ids, list):
             continue
-        row_tags: list[str] = []
         sorted_ids = tuple(sorted(int(i) for i in ids))
+        parsed_rows.append((sorted_ids, r))
+        wanted_item_ids.update(sorted_ids)
+
+    item_rows = (
+        db.query(WardrobeItem)
+        .filter(WardrobeItem.id.in_(wanted_item_ids))
+        .all()
+        if wanted_item_ids
+        else []
+    )
+    style_tags_by_item_id = {row.id: list(row.style_tags_json or []) for row in item_rows}
+
+    tags: list[str] = []
+    history: list[dict[str, Any]] = []
+    for sorted_ids, _row in parsed_rows:
+        row_tags: list[str] = []
         for wid in sorted_ids:
-            item = db.query(WardrobeItem).filter(WardrobeItem.id == int(wid)).first()
-            if item:
-                item_tags = list(item.style_tags_json or [])
-                tags.extend(item_tags)
-                row_tags.extend(item_tags)
+            item_tags = style_tags_by_item_id.get(wid, [])
+            tags.extend(item_tags)
+            row_tags.extend(item_tags)
         history.append({"item_ids": list(sorted_ids), "style_tags": row_tags, "rating": rating_by_combo.get(sorted_ids)})
     return tags, history
 
@@ -133,8 +170,10 @@ def build_recommendations(
             list[dict[str, Any]],
             list[EvidenceContribution],
             list[str],
+            str,
         ]
     ] = []
+    supervisor_candidates: list[dict[str, Any]] = []
 
     for cand in candidates:
         results = [
@@ -181,17 +220,66 @@ def build_recommendations(
                 }
             )
 
-        scored.append((final_score, cand, agent_contribs, trace, ev_tags, reasons))
+        candidate_key = "-".join(str(i) for i in sorted(cand.item_ids))
+        scored.append((final_score, cand, agent_contribs, trace, ev_tags, reasons, candidate_key))
+        supervisor_candidates.append(
+            {
+                "candidate_key": candidate_key,
+                "item_ids": sorted(cand.item_ids),
+                "partial_scores": partials,
+                "agent_reasons": {r.agent_name: r.reasons for r in results},
+                "total_pre_evidence": round(total_pre, 4),
+                "evidence_adjustments": [
+                    {
+                        "evidence_id": a.evidence_id,
+                        "delta": a.delta,
+                        "rationale": a.rationale,
+                    }
+                    for a in adjustments
+                ],
+                "fallback_reason": explanation_for_rank(0, final_score, ev_tags, reasons),
+            }
+        )
 
-    scored.sort(key=lambda x: x[0], reverse=True)
+    supervisor_context = {
+        "event_type": body.context.event_type.value,
+        "temperature_c": body.context.temperature_c,
+        "mood": body.context.mood.value,
+        "notes": body.context.notes,
+    }
+    supervisor_out = _run_async(
+        orch.supervise(
+            event_type=body.context.event_type,
+            context=supervisor_context,
+            candidates=supervisor_candidates,
+        )
+    )
+
+    by_key = {row[6]: row for row in scored}
+    ranked_keys = [k for k in supervisor_out.get("final_ranking", []) if isinstance(k, str) and k in by_key]
+    for key in by_key:
+        if key not in ranked_keys:
+            ranked_keys.append(key)
+    scored = [by_key[k] for k in ranked_keys]
     top = scored[:3]
+    synth_text = supervisor_out.get("synthesis_text", {})
+    conflict_flags = supervisor_out.get("conflict_flags", {})
+    adjusted_weights = supervisor_out.get("adjusted_weights", {})
 
     suggestions: list[OutfitSuggestion] = []
     for rank, row in enumerate(top, start=1):
-        score, cand, contribs, trace, ev_tags, reasons = row
+        score, cand, contribs, trace, ev_tags, reasons, candidate_key = row
         id_to_item = {it.id: it for it in cand.items}
         ordered_ids = sorted(cand.item_ids)
         names = [id_to_item[i].name for i in ordered_ids if i in id_to_item]
+        trace.append(
+            {
+                "type": "supervisor",
+                "candidate_key": candidate_key,
+                "adjusted_weights": adjusted_weights,
+                "conflict_flags": conflict_flags.get(candidate_key, []),
+            }
+        )
         suggestions.append(
             OutfitSuggestion(
                 rank=rank,
@@ -200,7 +288,14 @@ def build_recommendations(
                 total_score=round(score, 4),
                 agent_contributions=contribs,
                 evidence_tags=ev_tags,
-                explanation=explanation_for_rank(rank, score, ev_tags, reasons),
+                explanation=explanation_for_rank(
+                    rank,
+                    score,
+                    ev_tags,
+                    reasons,
+                    synthesis_text=synth_text.get(candidate_key),
+                    conflicts=conflict_flags.get(candidate_key, []),
+                ),
                 decision_trace=trace,
             )
         )
@@ -217,7 +312,14 @@ def explanation_for_rank(
     score: float,
     ev: list[EvidenceContribution],
     reasons: list[str],
+    synthesis_text: str | None = None,
+    conflicts: list[str] | None = None,
 ) -> str:
+    if synthesis_text:
+        conflict_note = ""
+        if conflicts:
+            conflict_note = f" Conflicts considered: {', '.join(conflicts[:2])}."
+        return f"#{rank} — total {score:.3f}. {synthesis_text}{conflict_note}"
     ev_bits = ", ".join(f"{e.evidence_id} ({e.effect_on_total:+.3f})" for e in ev[:4])
     rbits = "; ".join(reasons[:3]) if reasons else ""
     return f"#{rank} — total {score:.3f}. {rbits}. Evidence: {ev_bits}."

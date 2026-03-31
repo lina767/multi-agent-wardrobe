@@ -1,3 +1,5 @@
+import asyncio
+
 from app.agents.orchestrator import OrchestratorAgent
 from app.domain.entities import AgentEvaluationResult
 from app.domain.enums import EventType
@@ -34,3 +36,28 @@ def test_home_weights_differ_from_meeting():
     t_home, _, _, _, _ = orch.merge(results, EventType.HOME)
     assert isinstance(t_meeting, float)
     assert isinstance(t_home, float)
+
+
+def test_supervise_falls_back_without_api_key():
+    orch = OrchestratorAgent()
+    out = asyncio.run(
+        orch.supervise(
+            event_type=EventType.HOME,
+            context={"event_type": "home", "temperature_c": 20, "mood": "focus"},
+            candidates=[
+                {
+                    "candidate_key": "1-2-3",
+                    "total_pre_evidence": 0.72,
+                    "fallback_reason": "Deterministic baseline.",
+                },
+                {
+                    "candidate_key": "4-5-6",
+                    "total_pre_evidence": 0.61,
+                    "fallback_reason": "Deterministic baseline.",
+                },
+            ],
+        )
+    )
+    assert out["final_ranking"] == ["1-2-3", "4-5-6"]
+    assert "adjusted_weights" in out
+    assert "harmony" in out["adjusted_weights"]
