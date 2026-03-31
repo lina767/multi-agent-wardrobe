@@ -152,6 +152,7 @@ export interface UserProfile {
   name: string | null;
   age: number | null;
   life_phase: string | null;
+  cold_sensitivity: number | null;
   selfie_url: string | null;
   figure_analysis: string | null;
   color_profile: {

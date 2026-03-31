@@ -59,6 +59,7 @@ def create_item(
         name=body.name,
         category=body.category.value,
         color_families_json=[c.value for c in body.color_families],
+        dominant_colors_json=[entry.model_dump() for entry in body.dominant_colors],
         formality=body.formality.value,
         season_tags_json=body.season_tags,
         weather_tags_json=body.weather_tags,
@@ -93,6 +94,8 @@ def update_item(
         data["category"] = data["category"].value
     if "color_families" in data and data["color_families"] is not None:
         data["color_families_json"] = [c.value for c in data.pop("color_families")]
+    if "dominant_colors" in data and data["dominant_colors"] is not None:
+        data["dominant_colors_json"] = data.pop("dominant_colors")
     if "formality" in data and data["formality"] is not None:
         data["formality"] = data["formality"].value
     if "status" in data and data["status"] is not None:
@@ -198,6 +201,7 @@ async def bulk_upload_items(
             name=display_name,
             category=parsed_category,
             color_families_json=[parsed_color],
+            dominant_colors_json=[],
             formality=parsed_formality,
             season_tags_json=[],
             weather_tags_json=[],
@@ -241,6 +245,7 @@ async def bulk_upload_items(
                 "color_families": list(r.color_families_json or []),
                 "style_tags": list(r.style_tags_json or []),
                 "season_tags": list(r.season_tags_json or []),
+                "dominant_colors": list(r.dominant_colors_json or []),
                 "is_available": r.is_available,
                 "status": r.status or ItemStatus.CLEAN.value,
             }
@@ -279,6 +284,7 @@ def _serialize_row(row: WardrobeItem) -> WardrobeItemRead:
         name=row.name,
         category=WardrobeCategory(row.category),
         color_families=[ColorFamily(c) for c in (row.color_families_json or [])],
+        dominant_colors=list(row.dominant_colors_json or []),
         formality=DresscodeLevel(row.formality),
         season_tags=list(row.season_tags_json or []),
         weather_tags=list(row.weather_tags_json or []),

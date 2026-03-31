@@ -80,6 +80,8 @@ class VisionPipeline:
                 row.category = tags.category
             if tags.color_families:
                 row.color_families_json = tags.color_families
+            if tags.dominant_colors:
+                row.dominant_colors_json = tags.dominant_colors
             if tags.style_tags:
                 row.style_tags_json = tags.style_tags
             if tags.material:

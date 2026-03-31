@@ -19,6 +19,7 @@ def _item(
         name=f"item{fid}",
         category=cat,
         color_families=colors or [ColorFamily.NEUTRAL],
+        dominant_colors=[],
         formality=formality,
         season_tags=[],
         is_available=True,

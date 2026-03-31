@@ -13,6 +13,7 @@ def _item(item_id: int, category: WardrobeCategory) -> WardrobeItemDTO:
         name=f"item-{item_id}",
         category=category,
         color_families=[ColorFamily.NEUTRAL],
+        dominant_colors=[],
         formality=DresscodeLevel.CASUAL,
         season_tags=[],
         is_available=True,
@@ -47,6 +48,6 @@ def test_build_retrieval_query_includes_context_and_style_signals() -> None:
     )
     query = _build_retrieval_query(req, req.style_preferences)
     assert "event:meeting" in query
-    assert "mood:focused" in query
+    assert "mood:focus" in query
     assert "minimalist" in query
     assert "avoid:streetwear" in query

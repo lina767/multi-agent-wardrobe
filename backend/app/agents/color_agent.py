@@ -12,8 +12,8 @@ from urllib.request import Request, urlopen
 from app.agents.constants import SEASON_PALETTES, SEASON_TYPES
 from app.config import settings
 from app.domain.entities import AgentEvaluationResult, OutfitCandidateDTO, RecommendationPipelineInput
-from app.domain.enums import ColorFamily
-from app.services.color_math import delta_e_lab, harmony_from_delta_e, hex_to_rgb, rgb_to_lab
+from app.domain.enums import ColorFamily, WardrobeCategory
+from app.services.color_math import delta_e_lab, harmony_from_delta_e, hex_to_hsl, hex_to_rgb, hue_distance_deg, rgb_to_lab
 
 try:
     from PIL import Image
@@ -58,24 +58,173 @@ class ColorAgent:
         candidate: OutfitCandidateDTO,
         pipeline: RecommendationPipelineInput,
     ) -> AgentEvaluationResult:
-        palette_bias = set(pipeline.palette_bias)
-        item_colors = [cf for it in candidate.items for cf in it.color_families]
-        if not item_colors:
+        weighted_colors = self._weighted_item_colors(candidate)
+        if not weighted_colors:
             return AgentEvaluationResult(agent_name="color", partial_scores={"harmony": 0.5}, reasons=["No color signals available."])
 
-        neutrals = sum(1 for c in item_colors if c == ColorFamily.NEUTRAL)
-        harmony = 0.45 + min(0.3, neutrals * 0.08)
-        reasons = ["Neutral anchor improves harmony."]
-        if palette_bias:
-            overlap = sum(1 for c in item_colors if c in palette_bias)
-            harmony += min(0.25, overlap * 0.08)
-            if overlap > 0:
-                reasons.append("Respects user palette bias.")
+        profile = pipeline.color_profile if isinstance(pipeline.color_profile, dict) else {}
+        palette = self._resolve_palette(profile, pipeline.palette_bias)
+        complementary = self._complementary_score(weighted_colors)
+        analogous = self._angle_alignment_score(weighted_colors, target=30.0, spread=45.0)
+        triadic = self._angle_alignment_score(weighted_colors, target=120.0, spread=55.0)
+        neutral_anchor = self._neutral_anchor_score(weighted_colors)
+        seasonal_fit = self._seasonal_palette_score(weighted_colors, palette)
+
+        harmony = (
+            (0.42 * complementary)
+            + (0.12 * analogous)
+            + (0.10 * triadic)
+            + (0.16 * neutral_anchor)
+            + (0.20 * seasonal_fit)
+        )
+        reasons = [
+            f"Complementary balance: {complementary:.2f}",
+            f"Seasonal palette alignment: {seasonal_fit:.2f}",
+        ]
+        if neutral_anchor >= 0.55:
+            reasons.append("Neutral anchor stabilizes contrast.")
+        if analogous >= 0.55:
+            reasons.append("Analog accents keep transitions cohesive.")
+        if triadic >= 0.55:
+            reasons.append("Triadic spacing adds controlled vibrancy.")
         return AgentEvaluationResult(
             agent_name="color",
             partial_scores={"harmony": max(0.0, min(1.0, harmony))},
             reasons=reasons,
         )
+
+    def _weighted_item_colors(self, candidate: OutfitCandidateDTO) -> list[dict[str, float | str]]:
+        colors: list[dict[str, float | str]] = []
+        for item in candidate.items:
+            category_weight = self._category_weight(item.category)
+            if item.dominant_colors:
+                for entry in item.dominant_colors:
+                    if not isinstance(entry, dict):
+                        continue
+                    hex_color = str(entry.get("hex", "")).upper()
+                    if not hex_color.startswith("#") or len(hex_color) != 7:
+                        continue
+                    proportion_raw = entry.get("proportion", 0.0)
+                    proportion = float(proportion_raw) if isinstance(proportion_raw, (int, float)) else 0.0
+                    proportion = max(0.0, min(1.0, proportion))
+                    saturation_raw = entry.get("saturation")
+                    if isinstance(saturation_raw, (int, float)):
+                        saturation = max(0.0, min(1.0, float(saturation_raw)))
+                        hue = float(entry.get("hue", 0.0)) % 360.0
+                        lightness = float(entry.get("lightness", 0.5))
+                    else:
+                        hue, saturation, lightness = hex_to_hsl(hex_color)
+                    colors.append(
+                        {
+                            "hex": hex_color,
+                            "hue": float(hue),
+                            "saturation": float(saturation),
+                            "lightness": float(max(0.0, min(1.0, lightness))),
+                            "weight": max(0.05, category_weight * max(0.1, proportion)),
+                        }
+                    )
+                continue
+            # Graceful fallback for legacy rows without dominant colors.
+            for fallback_hex in self._fallback_hexes_for_families(item.color_families):
+                hue, saturation, lightness = hex_to_hsl(fallback_hex)
+                colors.append(
+                    {
+                        "hex": fallback_hex,
+                        "hue": hue,
+                        "saturation": saturation,
+                        "lightness": lightness,
+                        "weight": category_weight * 0.25,
+                    }
+                )
+        return colors
+
+    def _category_weight(self, category: WardrobeCategory) -> float:
+        if category in {WardrobeCategory.TOP, WardrobeCategory.OUTER}:
+            return 1.0
+        if category == WardrobeCategory.ACCESSORY:
+            return 0.8
+        if category == WardrobeCategory.BOTTOM:
+            return 0.65
+        return 0.55
+
+    def _fallback_hexes_for_families(self, families: list[ColorFamily]) -> list[str]:
+        mapping = {
+            ColorFamily.NEUTRAL: "#B5B0A1",
+            ColorFamily.WARM: "#C47F3A",
+            ColorFamily.COOL: "#8FA8C9",
+            ColorFamily.BOLD: "#B5727A",
+            ColorFamily.EARTH: "#8B6544",
+            ColorFamily.PASTEL: "#DCCCE8",
+        }
+        return [mapping[f] for f in families if f in mapping] or ["#B5B0A1"]
+
+    def _resolve_palette(self, profile: dict[str, Any], palette_bias: list[ColorFamily]) -> list[str]:
+        palette = profile.get("palette")
+        if isinstance(palette, list):
+            valid = [str(color).upper() for color in palette if isinstance(color, str) and color.startswith("#")]
+            if valid:
+                return valid[:8]
+        season = str(profile.get("season") or "")
+        if season in SEASON_PALETTES:
+            return list(SEASON_PALETTES[season])
+        if ColorFamily.WARM in palette_bias:
+            return ["#E27D60", "#FFB347", "#C47F3A", "#B08D57", "#A66A3F"]
+        if ColorFamily.COOL in palette_bias:
+            return ["#8FA8C9", "#A3BFD9", "#5B6CFF", "#4361EE", "#4CC9F0"]
+        return list(SEASON_PALETTES["true_summer"])
+
+    def _complementary_score(self, colors: list[dict[str, float | str]]) -> float:
+        weighted_sum = 0.0
+        weight_total = 0.0
+        for i in range(len(colors)):
+            for j in range(i + 1, len(colors)):
+                hue_a = float(colors[i]["hue"])
+                hue_b = float(colors[j]["hue"])
+                dist = hue_distance_deg(hue_a, hue_b)
+                closeness = max(0.0, 1.0 - (abs(dist - 180.0) / 80.0))
+                weight = float(colors[i]["weight"]) * float(colors[j]["weight"])
+                sat_gate = min(float(colors[i]["saturation"]), float(colors[j]["saturation"]))
+                pair_weight = weight * (0.65 + 0.35 * sat_gate)
+                weighted_sum += closeness * pair_weight
+                weight_total += pair_weight
+        if weight_total <= 0.0:
+            return 0.45
+        return max(0.0, min(1.0, weighted_sum / weight_total))
+
+    def _angle_alignment_score(self, colors: list[dict[str, float | str]], target: float, spread: float) -> float:
+        values: list[float] = []
+        for i in range(len(colors)):
+            for j in range(i + 1, len(colors)):
+                dist = hue_distance_deg(float(colors[i]["hue"]), float(colors[j]["hue"]))
+                closeness = max(0.0, 1.0 - abs(dist - target) / spread)
+                values.append(closeness)
+        if not values:
+            return 0.4
+        return sum(values) / len(values)
+
+    def _neutral_anchor_score(self, colors: list[dict[str, float | str]]) -> float:
+        total_weight = sum(float(c["weight"]) for c in colors) or 1.0
+        neutral_weight = 0.0
+        for c in colors:
+            sat = float(c["saturation"])
+            lightness = float(c["lightness"])
+            if sat <= 0.18 or (sat <= 0.28 and 0.22 <= lightness <= 0.85):
+                neutral_weight += float(c["weight"])
+        return max(0.0, min(1.0, neutral_weight / total_weight))
+
+    def _seasonal_palette_score(self, colors: list[dict[str, float | str]], palette: list[str]) -> float:
+        if not palette:
+            return 0.5
+        palette_labs = [rgb_to_lab(hex_to_rgb(color)) for color in palette]
+        weighted = 0.0
+        total_weight = 0.0
+        for color in colors:
+            color_lab = rgb_to_lab(hex_to_rgb(str(color["hex"])))
+            distances = [delta_e_lab(color_lab, p_lab) for p_lab in palette_labs]
+            best = min(distances) if distances else 65.0
+            weighted += harmony_from_delta_e(best) * float(color["weight"])
+            total_weight += float(color["weight"])
+        return weighted / max(1e-6, total_weight)
 
     async def analyze_selfie(self, selfie_bytes: bytes) -> dict:
         profile = self._fallback_profile()

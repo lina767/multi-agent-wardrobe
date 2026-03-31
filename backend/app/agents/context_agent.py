@@ -26,10 +26,14 @@ class ContextAgent:
         score = 0.82
         reasons: list[str] = ["Context fit is acceptable."]
         effective_temp = feels_like if feels_like is not None else temp
-        if effective_temp is not None and effective_temp < 8 and not has_outer:
+        cold_sensitivity = pipeline.cold_sensitivity if isinstance(pipeline.cold_sensitivity, int) else 3
+        cold_offset_c = float(cold_sensitivity - 3) * 2.0
+        needs_outer_below_c = 8.0 + cold_offset_c
+        outer_too_warm_above_c = 24.0 + cold_offset_c
+        if effective_temp is not None and effective_temp < needs_outer_below_c and not has_outer:
             score = 0.45
             reasons = ["Cold weather without an outer layer."]
-        elif effective_temp is not None and effective_temp > 24 and has_outer:
+        elif effective_temp is not None and effective_temp > outer_too_warm_above_c and has_outer:
             score = 0.55
             reasons = ["Warm weather with unnecessary outer layer."]
 

@@ -1,4 +1,4 @@
-from app.domain.enums import EventType
+from app.domain.enums import ColorFamily, EventType
 from app.models.profile import UserProfile
 from app.routers.suggestions import _occasion_to_event, _palette_bias_from_profile
 
@@ -9,9 +9,9 @@ def test_palette_bias_from_profile_classifies_hex_palette() -> None:
         color_palette=["#B5B5B5", "#D87A5C", "#4F6DCC", "#A89B77", "#CCE0D1"],
     )
     buckets = _palette_bias_from_profile(profile)
-    assert "neutral" in buckets
-    assert "warm" in buckets
-    assert "cool" in buckets
+    assert ColorFamily.NEUTRAL in buckets
+    assert ColorFamily.WARM in buckets
+    assert ColorFamily.COOL in buckets
 
 
 def test_palette_bias_ignores_invalid_values() -> None:

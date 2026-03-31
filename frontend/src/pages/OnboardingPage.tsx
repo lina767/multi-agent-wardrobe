@@ -8,6 +8,7 @@ export function OnboardingPage() {
     name: "",
     age: "",
     life_phase: "",
+    cold_sensitivity: "3",
     figure_analysis: "",
     location: "",
   });
@@ -24,6 +25,7 @@ export function OnboardingPage() {
         name: form.name || undefined,
         age: form.age ? Number(form.age) : undefined,
         life_phase: form.life_phase || undefined,
+        cold_sensitivity: form.cold_sensitivity ? Number(form.cold_sensitivity) : undefined,
         figure_analysis: form.figure_analysis || undefined,
         location: form.location || undefined,
       });
@@ -55,6 +57,16 @@ export function OnboardingPage() {
         <label className="field">
           Life chapter
           <input value={form.life_phase} onChange={(event) => setForm((prev) => ({ ...prev, life_phase: event.target.value }))} />
+        </label>
+        <label className="field">
+          Cold sensitivity (1 = rarely cold, 5 = gets cold quickly)
+          <input
+            type="number"
+            min={1}
+            max={5}
+            value={form.cold_sensitivity}
+            onChange={(event) => setForm((prev) => ({ ...prev, cold_sensitivity: event.target.value }))}
+          />
         </label>
         <label className="field">
           Silhouette note

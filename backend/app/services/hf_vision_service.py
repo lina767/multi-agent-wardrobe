@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import colorsys
 from dataclasses import dataclass
+from io import BytesIO
 from typing import Any
 
 import httpx
+try:
+    from PIL import Image
+except Exception:  # pragma: no cover
+    Image = None
 
 from app.config import settings
 from app.domain.enums import ColorFamily, WardrobeCategory
@@ -18,6 +24,7 @@ _MATERIAL_CANDIDATES = ["leather", "wool", "cotton", "denim", "linen", "silk", "
 class VisionTags:
     category: str | None
     color_families: list[str]
+    dominant_colors: list[dict[str, Any]]
     style_tags: list[str]
     material: str | None
 
@@ -37,6 +44,7 @@ class HuggingFaceVisionService:
         return VisionTags(
             category=_map_category(category),
             color_families=_map_color_families(colors),
+            dominant_colors=_extract_dominant_colors(image_bytes),
             style_tags=_map_style_tags(styles),
             material=_map_material(material),
         )
@@ -202,3 +210,45 @@ def _map_material(label: str | None) -> str | None:
         return None
     allowed = {"leather", "wool", "cotton", "denim", "linen", "silk", "polyester", "knit"}
     return label if label in allowed else None
+
+
+def _extract_dominant_colors(image_bytes: bytes, max_colors: int = 3) -> list[dict[str, Any]]:
+    if not Image:
+        return []
+    try:
+        with Image.open(BytesIO(image_bytes)) as img:
+            rgb = img.convert("RGB").resize((96, 96))
+            quantized = rgb.quantize(colors=max_colors, method=Image.Quantize.MEDIANCUT)
+            palette = quantized.getpalette()
+            counts = quantized.getcolors(maxcolors=96 * 96) or []
+    except Exception:
+        return []
+
+    if not palette or not counts:
+        return []
+    total = sum(int(c[0]) for c in counts) or 1
+    colors: list[dict[str, Any]] = []
+    for count, idx in sorted(counts, key=lambda x: x[0], reverse=True)[:max_colors]:
+        base = int(idx) * 3
+        if base + 2 >= len(palette):
+            continue
+        r, g, b = int(palette[base]), int(palette[base + 1]), int(palette[base + 2])
+        hue, lightness, saturation = colorsys.rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
+        temp = "neutral"
+        if saturation >= 0.1:
+            hue_deg = hue * 360.0
+            if hue_deg < 70 or hue_deg >= 290:
+                temp = "warm"
+            elif 70 <= hue_deg < 250:
+                temp = "cool"
+        colors.append(
+            {
+                "hex": f"#{r:02X}{g:02X}{b:02X}",
+                "proportion": round(float(count) / float(total), 4),
+                "hue": round(hue * 360.0, 2),
+                "saturation": round(saturation, 4),
+                "lightness": round(lightness, 4),
+                "temperature": temp,
+            }
+        )
+    return colors

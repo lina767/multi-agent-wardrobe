@@ -26,7 +26,7 @@ from app.config import settings
 from app.domain.entities import OutfitCandidateDTO, RecommendationPipelineInput, WardrobeItemDTO
 from app.domain.enums import ColorFamily, DresscodeLevel, ItemStatus, WardrobeCategory
 from app.evidence.rules import EvidenceRuleEngine
-from app.db.models import FeedbackEvent, OutfitLog, WardrobeItem
+from app.db.models import FeedbackEvent, OutfitLog, User, WardrobeItem
 from app.services.temporal_intelligence import get_current_temporal_state
 from app.services.vector_retrieval import VectorRetriever
 
@@ -59,6 +59,7 @@ def _item_to_dto(row: WardrobeItem) -> WardrobeItemDTO:
         name=row.name,
         category=WardrobeCategory(row.category),
         color_families=[ColorFamily(c) for c in (row.color_families_json or [])],
+        dominant_colors=list(row.dominant_colors_json or []),
         formality=DresscodeLevel(row.formality) if row.formality else DresscodeLevel.CASUAL,
         season_tags=list(row.season_tags_json or []),
         is_available=row.is_available,
@@ -172,6 +173,11 @@ def build_recommendations(
 ) -> RecommendationResponse:
     rows = db.query(WardrobeItem).filter(WardrobeItem.user_id == user_id).all()
     items = [_item_to_dto(r) for r in rows]
+    user = db.query(User).filter(User.id == user_id).first()
+    preferences = user.preferences_json if user and isinstance(user.preferences_json, dict) else {}
+    cold_sensitivity = preferences.get("cold_sensitivity")
+    if not isinstance(cold_sensitivity, int) or cold_sensitivity < 1 or cold_sensitivity > 5:
+        cold_sensitivity = None
 
     style_prefs = body.style_preferences or UserStylePreferences()
     hist_tags, outfit_history = _history_snapshot(db, user_id)
@@ -181,6 +187,8 @@ def build_recommendations(
         style_preferences=style_prefs,
         palette_bias=body.palette_bias,
         items=items,
+        color_profile=body.color_profile,
+        cold_sensitivity=cold_sensitivity,
         outfit_history_tags=hist_tags,
         outfit_history=outfit_history,
     )

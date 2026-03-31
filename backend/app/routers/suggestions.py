@@ -9,6 +9,7 @@ from app.api.schemas import ContextInput, RecommendationRequest
 from app.db.models import WardrobeItem
 from app.db.session import get_db
 from app.dependencies import get_current_user_id
+from app.domain.enums import ColorFamily
 from app.models.profile import OutfitLog, OutfitSuggestion, UserProfile
 from app.domain.enums import EventType, MoodEnergy
 from app.services.recommendation_service import build_recommendations
@@ -18,10 +19,10 @@ from app.services.weather import WeatherService
 router = APIRouter(tags=["suggestions"])
 
 
-def _palette_bias_from_profile(profile: UserProfile | None) -> list[str]:
+def _palette_bias_from_profile(profile: UserProfile | None) -> list[ColorFamily]:
     if not profile or not profile.color_palette:
         return []
-    buckets: set[str] = set()
+    buckets: set[ColorFamily] = set()
     for value in profile.color_palette:
         if not isinstance(value, str) or not value.startswith("#") or len(value) != 7:
             continue
@@ -34,16 +35,16 @@ def _palette_bias_from_profile(profile: UserProfile | None) -> list[str]:
         max_c = max(r, g, b)
         min_c = min(r, g, b)
         if max_c - min_c < 20:
-            buckets.add("neutral")
+            buckets.add(ColorFamily.NEUTRAL)
         elif r > b + 20:
-            buckets.add("warm")
+            buckets.add(ColorFamily.WARM)
         elif b > r + 20:
-            buckets.add("cool")
+            buckets.add(ColorFamily.COOL)
         elif max_c > 170:
-            buckets.add("pastel")
+            buckets.add(ColorFamily.PASTEL)
         else:
-            buckets.add("earth")
-    return sorted(buckets)
+            buckets.add(ColorFamily.EARTH)
+    return sorted(buckets, key=lambda c: c.value)
 
 
 def _occasion_to_event(occasion: str) -> EventType:
@@ -96,6 +97,12 @@ async def get_suggestions(
             notes=f"occasion={occasion.lower()} location={location or ''}".strip(),
         ),
         palette_bias=palette_bias,
+        color_profile={
+            "season": profile.color_season if profile else None,
+            "undertone": profile.undertone if profile else None,
+            "contrast_level": profile.contrast_level if profile else None,
+            "palette": profile.color_palette if profile else None,
+        },
         max_candidates_to_rank=120,
     )
     output = build_recommendations(db, user_id, req)

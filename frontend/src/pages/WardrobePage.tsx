@@ -1,7 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { api } from "../api";
-import { trackEvent } from "../telemetry";
 import type { ColorFamily, DresscodeLevel, LaundryStatus, WardrobeCategory, WardrobeItem, WardrobeItemCreate } from "../types";
 
 const categories: WardrobeCategory[] = ["top", "bottom", "outer", "shoes", "accessory"];
@@ -99,11 +98,6 @@ export function WardrobePage() {
         style_tags: splitTags(styleTagsText),
         season_tags: splitTags(seasonTagsText),
         weather_tags: splitTags(weatherTagsText),
-      });
-      trackEvent("wardrobe_item_created", {
-        category: form.category,
-        color_family: form.color_families[0],
-        source: "manual",
       });
       setForm(initialForm);
       setStyleTagsText("");

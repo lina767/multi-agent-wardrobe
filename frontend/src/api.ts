@@ -170,7 +170,13 @@ export const api = {
     }),
   getProfileState: () => request<TemporalState>("/profile/state"),
   getProfile: () => request<UserProfile>("/profile/me"),
-  updateProfile: (payload: { name?: string; age?: number; life_phase?: string; figure_analysis?: string }) =>
+  updateProfile: (payload: {
+    name?: string;
+    age?: number;
+    life_phase?: string;
+    cold_sensitivity?: number;
+    figure_analysis?: string;
+  }) =>
     request<UserProfile>("/profile/me", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -194,6 +200,7 @@ export const api = {
     name?: string;
     age?: number;
     life_phase?: string;
+    cold_sensitivity?: number;
     figure_analysis?: string;
     location?: string;
   }) =>

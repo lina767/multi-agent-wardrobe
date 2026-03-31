@@ -16,6 +16,7 @@ def _item(
         name=name,
         category=category,
         color_families=[ColorFamily.NEUTRAL],
+        dominant_colors=[],
         formality=DresscodeLevel.CASUAL,
         season_tags=[],
         is_available=True,

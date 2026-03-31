@@ -18,10 +18,20 @@ from app.domain.enums import (
 # --- Wardrobe ---
 
 
+class DominantColorFeature(BaseModel):
+    hex: str = Field(..., pattern="^#[0-9A-Fa-f]{6}$")
+    proportion: float = Field(..., ge=0.0, le=1.0)
+    hue: float = Field(..., ge=0.0, le=360.0)
+    saturation: float = Field(..., ge=0.0, le=1.0)
+    lightness: float = Field(..., ge=0.0, le=1.0)
+    temperature: str = Field(..., pattern="^(warm|cool|neutral)$")
+
+
 class WardrobeItemBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     category: WardrobeCategory
     color_families: list[ColorFamily] = Field(default_factory=list)
+    dominant_colors: list[DominantColorFeature] = Field(default_factory=list)
     formality: DresscodeLevel = DresscodeLevel.CASUAL
     season_tags: list[str] = Field(default_factory=list, description="e.g. spring, winter")
     weather_tags: list[str] = Field(default_factory=list, description="e.g. cold, rain, wind")
@@ -44,6 +54,7 @@ class WardrobeItemUpdate(BaseModel):
     name: str | None = None
     category: WardrobeCategory | None = None
     color_families: list[ColorFamily] | None = None
+    dominant_colors: list[DominantColorFeature] | None = None
     formality: DresscodeLevel | None = None
     season_tags: list[str] | None = None
     weather_tags: list[str] | None = None
@@ -101,6 +112,10 @@ class RecommendationRequest(BaseModel):
     palette_bias: list[ColorFamily] = Field(
         default_factory=list,
         description="User palette / season bias (e.g. warm/cool) for color harmony",
+    )
+    color_profile: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional color profile context (season, undertone, contrast_level, palette hex).",
     )
     max_candidates_to_rank: int = Field(50, ge=5, le=500)
 
@@ -254,6 +269,7 @@ class ProfileRead(BaseModel):
     name: str | None = None
     age: int | None = Field(default=None, ge=1, le=120)
     life_phase: str | None = None
+    cold_sensitivity: int | None = Field(default=None, ge=1, le=5)
     selfie_url: str | None = None
     figure_analysis: str | None = None
     color_profile: dict[str, Any] | None = None
@@ -263,6 +279,7 @@ class ProfileUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     age: int | None = Field(default=None, ge=1, le=120)
     life_phase: str | None = Field(default=None, max_length=120)
+    cold_sensitivity: int | None = Field(default=None, ge=1, le=5)
     figure_analysis: str | None = None
 
 
@@ -274,6 +291,7 @@ class OnboardingRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     age: int | None = Field(default=None, ge=1, le=120)
     life_phase: str | None = Field(default=None, max_length=120)
+    cold_sensitivity: int | None = Field(default=None, ge=1, le=5)
     figure_analysis: str | None = None
     location: str | None = None
 

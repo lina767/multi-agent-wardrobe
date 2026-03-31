@@ -1,7 +1,6 @@
 import { useState } from "react";
 
 import { api } from "../api";
-import { trackEvent } from "../telemetry";
 import type { LaundryStatus, Suggestion, SuggestionsResponse, WardrobeAnalyticsResponse, WardrobeItem } from "../types";
 
 const moodLabels: Record<string, string> = {
@@ -69,12 +68,6 @@ export function DailyOutfitPage({ onGeneratedSuggestion }: DailyOutfitPageProps)
     setError(null);
     try {
       await api.sendSuggestionFeedback(suggestionId, { ...payload, occasion });
-      trackEvent("suggestion_feedback_submitted", {
-        suggestion_id: suggestionId,
-        accepted: payload.accepted,
-        rating: payload.rating,
-        occasion,
-      });
       const message = payload.accepted === true ? "Saved as accepted." : payload.accepted === false ? "Saved as skipped." : "Rating saved.";
       setFeedbackBySuggestion((prev) => ({ ...prev, [suggestionId]: message }));
     } catch (requestError) {
@@ -93,12 +86,6 @@ export function DailyOutfitPage({ onGeneratedSuggestion }: DailyOutfitPageProps)
         mood,
         occasion,
         style_goals: [mood],
-      });
-      trackEvent("outfit_logged", {
-        suggestion_id: suggestion.id,
-        item_count: suggestion.items.length,
-        mood,
-        occasion,
       });
       setFeedbackBySuggestion((prev) => ({ ...prev, [suggestion.id]: "Outfit logged as worn." }));
     } catch (requestError) {

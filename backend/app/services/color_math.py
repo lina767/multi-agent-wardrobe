@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from colorsys import rgb_to_hls
 
 
 def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
@@ -38,6 +39,17 @@ def delta_e_lab(lab_a: tuple[float, float, float], lab_b: tuple[float, float, fl
 
 def harmony_from_delta_e(delta_e: float) -> float:
     return max(0.0, min(1.0, 1.0 - (delta_e / 100.0)))
+
+
+def hue_distance_deg(h1: float, h2: float) -> float:
+    diff = abs(float(h1) - float(h2)) % 360.0
+    return min(diff, 360.0 - diff)
+
+
+def hex_to_hsl(hex_color: str) -> tuple[float, float, float]:
+    r, g, b = hex_to_rgb(hex_color)
+    h, l, s = rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
+    return h * 360.0, s, l
 
 
 def _pivot_rgb(value: float) -> float:

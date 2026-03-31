@@ -13,6 +13,7 @@ class WardrobeItemDTO:
     name: str
     category: WardrobeCategory
     color_families: list[ColorFamily]
+    dominant_colors: list[dict[str, Any]]
     formality: DresscodeLevel
     season_tags: list[str]
     is_available: bool
@@ -47,5 +48,7 @@ class RecommendationPipelineInput:
     style_preferences: UserStylePreferences
     palette_bias: list[ColorFamily]
     items: list[WardrobeItemDTO]
+    color_profile: dict[str, Any] | None = None
+    cold_sensitivity: int | None = None
     outfit_history_tags: list[str] = field(default_factory=list)
     outfit_history: list[dict[str, Any]] = field(default_factory=list)

@@ -396,6 +396,7 @@ def test_profile_me_update_and_readback(client: TestClient) -> None:
             "name": "Lina",
             "age": 29,
             "life_phase": "career-growth",
+            "cold_sensitivity": 5,
             "figure_analysis": "balanced silhouette",
         },
     )
@@ -404,11 +405,20 @@ def test_profile_me_update_and_readback(client: TestClient) -> None:
     assert payload["name"] == "Lina"
     assert payload["age"] == 29
     assert payload["life_phase"] == "career-growth"
+    assert payload["cold_sensitivity"] == 5
     assert payload["figure_analysis"] == "balanced silhouette"
 
     reread = client.get("/api/v1/profile/me")
     assert reread.status_code == 200
     assert reread.json()["name"] == "Lina"
+    assert reread.json()["cold_sensitivity"] == 5
+
+
+def test_profile_me_rejects_invalid_cold_sensitivity(client: TestClient) -> None:
+    low = client.patch("/api/v1/profile/me", json={"cold_sensitivity": 0})
+    assert low.status_code == 422
+    high = client.patch("/api/v1/profile/me", json={"cold_sensitivity": 6})
+    assert high.status_code == 422
 
 
 def test_profile_selfie_upload_sets_url(client: TestClient) -> None:
@@ -428,6 +438,7 @@ def test_onboarding_runs_agents_and_returns_top3(client: TestClient) -> None:
             "name": "Lina",
             "age": 29,
             "life_phase": "new-role",
+            "cold_sensitivity": 4,
             "figure_analysis": "structured shoulders",
         },
     )
@@ -435,7 +446,14 @@ def test_onboarding_runs_agents_and_returns_top3(client: TestClient) -> None:
     payload = response.json()
     assert "profile" in payload
     assert "temporal_state" in payload
+    assert payload["profile"]["cold_sensitivity"] == 4
     assert len(payload["suggestions"]) <= 3
+
+
+def test_onboarding_rejects_invalid_cold_sensitivity(client: TestClient) -> None:
+    _seed_wardrobe(client)
+    response = client.post("/api/v1/profile/onboarding", json={"cold_sensitivity": 9})
+    assert response.status_code == 422
 
 
 def test_settings_email_update(client: TestClient) -> None:

@@ -10,6 +10,7 @@ def _item(item_id: int, tags: list[str]) -> WardrobeItemDTO:
         name=f"item-{item_id}",
         category=WardrobeCategory.TOP if item_id == 1 else WardrobeCategory.BOTTOM if item_id == 2 else WardrobeCategory.SHOES,
         color_families=[ColorFamily.NEUTRAL],
+        dominant_colors=[],
         formality=DresscodeLevel.CASUAL,
         season_tags=[],
         is_available=True,

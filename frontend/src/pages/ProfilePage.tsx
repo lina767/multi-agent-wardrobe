@@ -8,6 +8,7 @@ export function ProfilePage() {
   const [name, setName] = useState("");
   const [age, setAge] = useState<number | "">("");
   const [lifePhase, setLifePhase] = useState("");
+  const [coldSensitivity, setColdSensitivity] = useState<number | "">(3);
   const [figureAnalysis, setFigureAnalysis] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -21,6 +22,7 @@ export function ProfilePage() {
       setName(data.name ?? "");
       setAge(data.age ?? "");
       setLifePhase(data.life_phase ?? "");
+      setColdSensitivity(data.cold_sensitivity ?? 3);
       setFigureAnalysis(data.figure_analysis ?? "");
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to load profile.");
@@ -40,6 +42,7 @@ export function ProfilePage() {
         name: name.trim() || undefined,
         age: age === "" ? undefined : Number(age),
         life_phase: lifePhase.trim() || undefined,
+        cold_sensitivity: coldSensitivity === "" ? undefined : Number(coldSensitivity),
         figure_analysis: figureAnalysis.trim() || undefined,
       });
       setProfile(updated);
@@ -101,6 +104,16 @@ export function ProfilePage() {
         <label className="field">
           Life chapter
           <input value={lifePhase} onChange={(event) => setLifePhase(event.target.value)} />
+        </label>
+        <label className="field">
+          Cold sensitivity (1 = rarely cold, 5 = gets cold quickly)
+          <input
+            type="number"
+            min={1}
+            max={5}
+            value={coldSensitivity}
+            onChange={(event) => setColdSensitivity(event.target.value ? Number(event.target.value) : "")}
+          />
         </label>
         <label className="field">
           Silhouette notes

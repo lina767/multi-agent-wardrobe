@@ -43,6 +43,7 @@ def _build_profile_response(user: User, profile: UserProfile | None) -> ProfileR
         name=user.display_name,
         age=preferences.get("age"),
         life_phase=preferences.get("life_phase"),
+        cold_sensitivity=preferences.get("cold_sensitivity"),
         selfie_url=preferences.get("selfie_url"),
         figure_analysis=preferences.get("figure_analysis"),
         color_profile=(
@@ -120,7 +121,7 @@ def update_profile_me(
     payload = body.model_dump(exclude_unset=True)
     if "name" in payload:
         user.display_name = payload["name"]
-    for key in ("age", "life_phase", "figure_analysis"):
+    for key in ("age", "life_phase", "cold_sensitivity", "figure_analysis"):
         if key in payload:
             preferences[key] = payload[key]
     user.preferences_json = preferences
@@ -259,6 +260,7 @@ async def run_onboarding(
         user.display_name = body.name
     preferences["age"] = body.age
     preferences["life_phase"] = body.life_phase
+    preferences["cold_sensitivity"] = body.cold_sensitivity
     preferences["figure_analysis"] = body.figure_analysis
     user.preferences_json = preferences
 
@@ -276,6 +278,7 @@ async def run_onboarding(
     weather_data: dict = {}
     if body.location:
         weather_data = await WeatherService().fetch_current(body.location)
+    profile_model = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
     req = RecommendationRequest(
         context=ContextInput(
             condition=weather_data.get("condition"),
@@ -290,6 +293,12 @@ async def run_onboarding(
             mood=MoodEnergy.FOCUS,
             notes="onboarding_bootstrap",
         ),
+        color_profile={
+            "season": profile_model.color_season if profile_model else None,
+            "undertone": profile_model.undertone if profile_model else None,
+            "contrast_level": profile_model.contrast_level if profile_model else None,
+            "palette": profile_model.color_palette if profile_model else None,
+        },
         max_candidates_to_rank=60,
     )
     recommendations = build_recommendations(db, user_id, req)

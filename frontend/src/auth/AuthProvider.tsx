@@ -3,7 +3,6 @@ import type { Session, User } from "@supabase/supabase-js";
 
 import { setApiAccessToken } from "../api";
 import { getSupabaseClient } from "../lib/supabase";
-import { trackEvent } from "../telemetry";
 
 type AuthContextValue = {
   user: User | null;
@@ -45,9 +44,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session ?? null);
       setUser(data.session?.user ?? null);
       setApiAccessToken(data.session?.access_token ?? null);
-      if (data.session?.user?.id) {
-        trackEvent("auth_session_ready", { user_id: data.session.user.id });
-      }
       setAuthError(null);
       setIsLoading(false);
     });
@@ -56,9 +52,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession ?? null);
       setUser(nextSession?.user ?? null);
       setApiAccessToken(nextSession?.access_token ?? null);
-      if (nextSession?.user?.id) {
-        trackEvent("auth_session_ready", { user_id: nextSession.user.id });
-      }
       setAuthError(null);
       setIsLoading(false);
     });
