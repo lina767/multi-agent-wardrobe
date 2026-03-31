@@ -26,7 +26,7 @@ export function PublicHome() {
             manage your closet with structure, and improve your style with data-backed feedback loops.
           </p>
           <div className="row">
-            <Link className="linkButton" to="/login">
+            <Link className="linkButton" to="/signup">
               Get started
             </Link>
             <a className="linkButton subtle" href="#features">
@@ -137,7 +137,7 @@ export function PublicHome() {
             </p>
           </div>
           <div className="row">
-            <Link className="linkButton" to="/login">
+            <Link className="linkButton" to="/signup">
               Sign up free
             </Link>
             <a className="linkButton subtle" href="#faq">

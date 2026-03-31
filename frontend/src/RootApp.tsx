@@ -56,7 +56,8 @@ export function RootApp() {
     <Routes>
       <Route path="/" element={<PublicHome />} />
       <Route element={<GuestRoute />}>
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={<LoginPage initialMode="login" />} />
+        <Route path="/signup" element={<LoginPage initialMode="signup" />} />
       </Route>
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
       <Route element={<ProtectedRoute />}>

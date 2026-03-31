@@ -5,10 +5,13 @@ import { useAuth } from "../auth/AuthProvider";
 
 const MAGIC_LINK_COOLDOWN_SECONDS = 60;
 
-function formatAuthError(message: string, method: "magic_link" | "password"): string {
+type AuthMethod = "magic_link" | "password";
+type AuthMode = "login" | "signup";
+
+function formatAuthError(message: string, method: AuthMethod): string {
   const lower = message.toLowerCase();
   if (lower.includes("email rate limit exceeded") || lower.includes("rate limit")) {
-    return "Too many email requests right now. Please wait a moment, or sign in with password.";
+    return "Your auth provider rate-limited email delivery. Please wait a moment and try again, or continue with password.";
   }
   if (method === "password" && (lower.includes("invalid login credentials") || lower.includes("invalid credentials"))) {
     return "Invalid email or password. Please try again, or use a magic link.";
@@ -16,9 +19,14 @@ function formatAuthError(message: string, method: "magic_link" | "password"): st
   return message;
 }
 
-export function LoginPage() {
-  const { sendMagicLink, signInWithPassword, requestPasswordReset, authError } = useAuth();
-  const [method, setMethod] = useState<"magic_link" | "password">("magic_link");
+interface LoginPageProps {
+  initialMode?: AuthMode;
+}
+
+export function LoginPage({ initialMode = "login" }: LoginPageProps) {
+  const { sendMagicLink, signInWithPassword, signUpWithPassword, requestPasswordReset, authError } = useAuth();
+  const [mode, setMode] = useState<AuthMode>(initialMode);
+  const [method, setMethod] = useState<AuthMethod>("magic_link");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -57,14 +65,23 @@ export function LoginPage() {
           return;
         }
         await sendMagicLink(email.trim());
-        setStatus("Magic link sent. Check your inbox to continue.");
+        setStatus(
+          mode === "signup"
+            ? "Sign-up link sent. Check your inbox to confirm your account."
+            : "Magic link sent. Check your inbox to continue.",
+        );
         setMagicLinkCooldownUntil(Date.now() + MAGIC_LINK_COOLDOWN_SECONDS * 1000);
       } else {
-        await signInWithPassword(email.trim(), password);
-        setStatus("Signed in successfully.");
+        if (mode === "signup") {
+          await signUpWithPassword(email.trim(), password);
+          setStatus("Account created. Please check your inbox to verify your email.");
+        } else {
+          await signInWithPassword(email.trim(), password);
+          setStatus("Signed in successfully.");
+        }
       }
     } catch (requestError) {
-      const fallback = "Unable to sign in.";
+      const fallback = mode === "signup" ? "Unable to sign up." : "Unable to sign in.";
       const rawMessage = requestError instanceof Error ? requestError.message : fallback;
       setError(formatAuthError(rawMessage, method));
     } finally {
@@ -97,8 +114,36 @@ export function LoginPage() {
     <main className="layout">
       <section className="card authCard authCardLuxury">
         <p className="eyebrow">Secure Access</p>
-        <h1>Welcome back</h1>
-        <p>Log in with magic link or password to enter your style studio.</p>
+        <h1>{mode === "signup" ? "Create your account" : "Welcome back"}</h1>
+        <p>
+          {mode === "signup"
+            ? "Sign up with magic link or password. You can switch to login any time."
+            : "Log in with magic link or password to enter your style studio."}
+        </p>
+        <div className="row">
+          <button
+            type="button"
+            className={mode === "login" ? "linkButton" : "linkButton subtle"}
+            onClick={() => {
+              setMode("login");
+              setStatus(null);
+              setError(null);
+            }}
+          >
+            Log in
+          </button>
+          <button
+            type="button"
+            className={mode === "signup" ? "linkButton" : "linkButton subtle"}
+            onClick={() => {
+              setMode("signup");
+              setStatus(null);
+              setError(null);
+            }}
+          >
+            Sign up
+          </button>
+        </div>
         <div className="row">
           <button
             type="button"
@@ -135,9 +180,19 @@ export function LoginPage() {
             </label>
           ) : null}
           <button type="submit" disabled={submitting}>
-            {submitting ? "Signing in..." : method === "magic_link" ? "Send magic link" : "Sign in with password"}
+            {submitting
+              ? mode === "signup"
+                ? "Creating account..."
+                : "Signing in..."
+              : method === "magic_link"
+                ? mode === "signup"
+                  ? "Send sign-up link"
+                  : "Send magic link"
+                : mode === "signup"
+                  ? "Create account with password"
+                  : "Sign in with password"}
           </button>
-          {method === "password" ? (
+          {method === "password" && mode === "login" ? (
             <button type="button" className="linkButton subtle" onClick={() => void handlePasswordReset()} disabled={submitting}>
               Forgot password?
             </button>
@@ -152,7 +207,16 @@ export function LoginPage() {
         {authError ? <p className="error">{authError}</p> : null}
         {error ? <p className="error">{error}</p> : null}
         <p>
-          <Link to="/">Back to home</Link>
+          <Link to="/">Back to home</Link> ·{" "}
+          {mode === "signup" ? (
+            <Link to="/login" onClick={() => setMode("login")}>
+              Already have an account?
+            </Link>
+          ) : (
+            <Link to="/signup" onClick={() => setMode("signup")}>
+              New here? Sign up
+            </Link>
+          )}
         </p>
       </section>
     </main>

@@ -35,6 +35,29 @@ class Settings(BaseSettings):
     color_fine_tuned_endpoint: str | None = None
     color_profile_min_confidence: float = 0.65
     color_agent_shadow_mode: bool = False
+    vector_store_backend: str = "none"  # none | pinecone | azure_ai_search
+    vector_search_top_k: int = 12
+    vector_embedding_provider: str = "endpoint"  # endpoint | huggingface
+    vector_embedding_endpoint: str | None = None
+    vector_embedding_api_key: str | None = None
+    vector_embedding_model: str | None = None
+    huggingface_embedding_api_key: str | None = None
+    huggingface_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    huggingface_embedding_endpoint: str | None = None
+    pinecone_api_key: str | None = None
+    pinecone_index_host: str | None = None
+    pinecone_namespace: str | None = None
+    azure_search_endpoint: str | None = None
+    azure_search_api_key: str | None = None
+    azure_search_index_name: str | None = None
+    azure_search_vector_field: str = "content_vector"
+    azure_search_item_id_field: str = "item_id"
+    vision_enabled: bool = False
+    hf_api_token: str | None = None
+    hf_tagging_model: str = "openai/clip-vit-base-patch32"
+    hf_rmbg_model: str = "briaai/RMBG-1.4"
+    hf_timeout_seconds: float = 20.0
+    hf_max_retries: int = 2
 
 
 settings = Settings()

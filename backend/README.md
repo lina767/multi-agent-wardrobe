@@ -47,9 +47,32 @@ Environment variables (prefix `WARDROBE_`):
 - `WARDROBE_CORS_ORIGINS` — JSON list (optional; defaults include localhost)
 - `WARDROBE_LOG_LEVEL` — e.g. `INFO`, `DEBUG`
 - `WARDROBE_STORAGE_BACKEND` — `local` (default) or `supabase`
+- `WARDROBE_WEATHER_API_KEY` — API key from [weatherapi.com](https://www.weatherapi.com) for weather-aware outfit context
 - `WARDROBE_SUPABASE_URL` — project URL, e.g. `https://xyzcompany.supabase.co`
 - `WARDROBE_SUPABASE_SERVICE_KEY` — service role key for upload/delete
 - `WARDROBE_SUPABASE_BUCKET` — storage bucket name (default: `wardrobe-images`)
+- `WARDROBE_VECTOR_STORE_BACKEND` — `none` (default), `pinecone`, or `azure_ai_search`
+- `WARDROBE_VECTOR_EMBEDDING_PROVIDER` — `endpoint` (FastAPI/OpenAI-compatible) or `huggingface`
+- `WARDROBE_VECTOR_EMBEDDING_ENDPOINT` — embedding API endpoint used to build query vectors
+- `WARDROBE_VECTOR_SEARCH_TOP_K` — how many vector hits are used to prioritize candidate outfits
+- `WARDROBE_PINECONE_*` / `WARDROBE_AZURE_SEARCH_*` — provider-specific credentials and index settings
+
+Weather location input supports common formats such as `Berlin`, `Berlin,de`, and `52.52,13.40`.
+
+### Vector retrieval (Pinecone / Azure AI Search)
+
+When enabled, the recommendation pipeline performs an additional vector lookup before scoring outfits:
+
+1. Build a semantic query from event, mood, forecast, notes, and style preferences.
+2. Query Pinecone or Azure AI Search for relevant wardrobe item IDs.
+3. Prioritize outfit candidates containing those IDs, then run normal multi-agent scoring.
+
+This adds scalable retrieval behavior (RAG-style item recall) without changing the existing scoring contracts.
+
+Embedding options:
+
+- `endpoint`: own FastAPI service or OpenAI-compatible endpoint that returns embeddings.
+- `huggingface`: Hugging Face Inference API (`WARDROBE_HUGGINGFACE_EMBEDDING_*`).
 
 ## Inventory Datenbank aufsetzen
 

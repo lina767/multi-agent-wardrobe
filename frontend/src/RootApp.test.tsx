@@ -27,6 +27,7 @@ describe("RootApp routing", () => {
       isAuthenticated: false,
       sendMagicLink: vi.fn(),
       signInWithPassword: vi.fn(),
+      signUpWithPassword: vi.fn(),
       requestPasswordReset: vi.fn(),
       signOut: vi.fn(),
     });
@@ -47,6 +48,7 @@ describe("RootApp routing", () => {
       isAuthenticated: false,
       sendMagicLink: vi.fn(),
       signInWithPassword: vi.fn(),
+      signUpWithPassword: vi.fn(),
       requestPasswordReset: vi.fn(),
       signOut: vi.fn(),
     });
@@ -66,6 +68,7 @@ describe("RootApp routing", () => {
       isAuthenticated: true,
       sendMagicLink: vi.fn(),
       signInWithPassword: vi.fn(),
+      signUpWithPassword: vi.fn(),
       requestPasswordReset: vi.fn(),
       signOut: vi.fn(),
     });
@@ -76,5 +79,25 @@ describe("RootApp routing", () => {
     );
     expect(screen.getByText("Dashboard Content")).toBeTruthy();
     expect(screen.getByText("test-user@example.com")).toBeTruthy();
+  });
+
+  it("renders signup mode on /signup", () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      session: null,
+      isLoading: false,
+      isAuthenticated: false,
+      sendMagicLink: vi.fn(),
+      signInWithPassword: vi.fn(),
+      signUpWithPassword: vi.fn(),
+      requestPasswordReset: vi.fn(),
+      signOut: vi.fn(),
+    });
+    render(
+      <MemoryRouter initialEntries={["/signup"]}>
+        <RootApp />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("Create your account")).toBeTruthy();
   });
 });

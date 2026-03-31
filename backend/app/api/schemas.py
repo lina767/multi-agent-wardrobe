@@ -64,6 +64,9 @@ class WardrobeItemRead(WardrobeItemBase):
     id: int
     user_id: int
     image_url: str | None = None
+    processed_image_url: str | None = None
+    vision_status: str = "pending"
+    vision_error: str | None = None
 
 
 # --- Context & recommendation request ---

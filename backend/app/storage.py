@@ -11,11 +11,11 @@ UPLOAD_DIR = Path(__file__).resolve().parents[1] / "data" / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def upload_image(item_id: int, payload: bytes, extension: str) -> str:
+def upload_image(item_id: int, payload: bytes, extension: str, folder: str = "uploads") -> str:
     ext = extension.lower().lstrip(".")
     if settings.storage_backend == "supabase":
-        return _upload_supabase(item_id, payload, ext)
-    return _upload_local(item_id, payload, ext)
+        return _upload_supabase(item_id, payload, ext, folder=folder)
+    return _upload_local(item_id, payload, ext, folder=folder)
 
 
 def delete_image(reference: str) -> None:
@@ -37,11 +37,13 @@ def resolve_image_url(reference: str | None) -> str | None:
     return f"/media/{reference}"
 
 
-def _upload_local(item_id: int, payload: bytes, ext: str) -> str:
+def _upload_local(item_id: int, payload: bytes, ext: str, folder: str) -> str:
     filename = f"{item_id}_{uuid4().hex}.{ext}"
-    out_path = UPLOAD_DIR / filename
+    out_dir = Path(__file__).resolve().parents[1] / "data" / folder
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / filename
     out_path.write_bytes(payload)
-    return str(Path("uploads") / filename)
+    return str(Path(folder) / filename)
 
 
 def _delete_local(relative_path: str) -> None:
@@ -53,10 +55,10 @@ def _delete_local(relative_path: str) -> None:
         pass
 
 
-def _upload_supabase(item_id: int, payload: bytes, ext: str) -> str:
+def _upload_supabase(item_id: int, payload: bytes, ext: str, folder: str) -> str:
     if not settings.supabase_url or not settings.supabase_service_key:
         raise RuntimeError("Supabase is selected but credentials are missing.")
-    key = f"items/{item_id}/{uuid4().hex}.{ext}"
+    key = f"{folder}/items/{item_id}/{uuid4().hex}.{ext}"
     base = settings.supabase_url.rstrip("/")
     url = f"{base}/storage/v1/object/{settings.supabase_bucket}/{key}"
     headers = {

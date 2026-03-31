@@ -1,0 +1,10 @@
+{
+  "plugins": {
+    "azure-cosmosdb": {
+      "enabled": true
+    },
+    "huggingface-skills": {
+      "enabled": true
+    }
+  }
+}

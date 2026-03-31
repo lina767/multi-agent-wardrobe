@@ -47,6 +47,9 @@ class WardrobeItem(Base):
     purchase_price: Mapped[float | None] = mapped_column(Float, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     image_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    processed_image_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    vision_status: Mapped[str] = mapped_column(String(32), default="pending", index=True)
+    vision_error: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="wardrobe_items")
 

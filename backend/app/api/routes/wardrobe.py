@@ -5,12 +5,14 @@ from sqlalchemy.orm import Session
 
 from app.api.schemas import WardrobeItemCreate, WardrobeItemRead, WardrobeItemUpdate
 from app.agents.wardrobe_agent import WardrobeAgent
+from app.config import settings
 from app.db.models import WardrobeItem
 from app.db.session import get_db
 from app.dependencies import get_current_user_id
 from app.domain.enums import ColorFamily, DresscodeLevel, ItemStatus, WardrobeCategory
 from app.models.profile import UserProfile
 from app.services.temporal_intelligence import record_style_signal
+from app.services.vision_pipeline import vision_pipeline
 from app.storage import delete_image, resolve_image_url, upload_image
 
 router = APIRouter(prefix="/wardrobe", tags=["wardrobe"])
@@ -149,8 +151,13 @@ async def upload_item_image(
     if row.image_path:
         delete_image(row.image_path)
     row.image_path = image_ref
+    row.vision_status = "pending"
+    row.vision_error = None
+    row.processed_image_path = None
     db.commit()
     db.refresh(row)
+    if settings.vision_enabled:
+        await vision_pipeline.enqueue(item_id=row.id, image_bytes=payload, extension=ext)
     return _serialize_row(row)
 
 
@@ -174,6 +181,7 @@ async def bulk_upload_items(
         raise HTTPException(status_code=400, detail="Invalid bulk-upload defaults") from exc
 
     created_rows: list[WardrobeItem] = []
+    vision_inputs: list[tuple[int, bytes, str]] = []
     for image in images:
         if not image.filename:
             raise HTTPException(status_code=400, detail="Missing filename")
@@ -207,11 +215,19 @@ async def bulk_upload_items(
         except RuntimeError as exc:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
         row.image_path = image_ref
+        vision_inputs.append((row.id, payload, ext))
+        row.vision_status = "pending"
+        row.vision_error = None
+        row.processed_image_path = None
         created_rows.append(row)
 
     db.commit()
     for row in created_rows:
         db.refresh(row)
+    if settings.vision_enabled:
+        for item_id, payload, ext in vision_inputs:
+            if payload:
+                await vision_pipeline.enqueue(item_id=item_id, image_bytes=payload, extension=ext)
 
     analysis: dict | None = None
     if analyze:
@@ -276,4 +292,7 @@ def _serialize_row(row: WardrobeItem) -> WardrobeItemRead:
         purchase_price=row.purchase_price,
         notes=row.notes,
         image_url=resolve_image_url(row.image_path),
+        processed_image_url=resolve_image_url(row.processed_image_path),
+        vision_status=row.vision_status or "pending",
+        vision_error=row.vision_error,
     )

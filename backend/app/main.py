@@ -14,6 +14,7 @@ from app.db.session import init_db
 from app.db.migrate import ensure_agent_schema, ensure_inventory_schema, ensure_temporal_schema, ensure_user_schema
 from app.logging_config import configure_logging
 from app.routers import analytics, auth, profile, suggestions
+from app.services.vision_pipeline import vision_pipeline
 
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -32,10 +33,13 @@ async def lifespan(app: FastAPI):
         ensure_agent_schema(db)
         ensure_temporal_schema(db)
         ensure_default_user(db)
+        if settings.vision_enabled:
+            await vision_pipeline.start()
         logger.info("application_startup", extra={"event": "startup", "user": "default_user"})
     finally:
         db.close()
     yield
+    await vision_pipeline.stop()
     logger.info("application_shutdown", extra={"event": "shutdown"})
 
 
