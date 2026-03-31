@@ -220,6 +220,39 @@ def test_suggestions_include_temporal_state_when_no_checkin(client: TestClient) 
     assert "state_factors" in temporal
 
 
+def test_suggestions_requires_wardrobe_items(client: TestClient) -> None:
+    response = client.get("/api/v1/suggestions?mood=focus&occasion=work")
+    assert response.status_code == 400
+    assert "No wardrobe items found" in response.json()["detail"]
+
+
+def test_outfit_log_and_suggestion_feedback_flow(client: TestClient) -> None:
+    _seed_wardrobe(client)
+    suggestions = client.get("/api/v1/suggestions?mood=focus&occasion=work")
+    assert suggestions.status_code == 200
+    first_suggestion_id = suggestions.json()["suggestions"][0]["id"]
+
+    log_response = client.post(
+        "/api/v1/outfits/log",
+        json={"item_ids": [1, 2, 3], "occasion": "work", "mood": "focus", "style_goals": ["minimalist"]},
+    )
+    assert log_response.status_code == 200
+    assert log_response.json()["status"] == "logged"
+
+    feedback_response = client.post(
+        f"/api/v1/suggestions/{first_suggestion_id}/feedback",
+        json={"accepted": True, "rating": 5, "occasion": "work"},
+    )
+    assert feedback_response.status_code == 200
+    assert feedback_response.json()["status"] == "updated"
+
+
+def test_suggestion_feedback_returns_404_for_missing_id(client: TestClient) -> None:
+    response = client.post("/api/v1/suggestions/99999/feedback", json={"accepted": True, "rating": 4})
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Suggestion not found"
+
+
 def test_recommendation_pipeline_integration_deterministic_and_evidence(client: TestClient) -> None:
     items = [
         ("White shirt", "top", "business", ["neutral"], ["classic"]),
