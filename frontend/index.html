@@ -6,22 +6,22 @@
     <title>Inventory Manager</title>
     <style>
       :root {
-        --bg: #f5fbf7;
-        --bg-accent: #eef7ff;
+        --bg: #fcf4f6;
+        --bg-accent: #f7eaf1;
         --surface: #ffffff;
-        --surface-soft: #f8fffb;
-        --text: #173126;
-        --text-muted: #547063;
-        --border: #cfe6d8;
-        --primary: #2f9e72;
-        --primary-strong: #21835d;
-        --accent: #ef8cb1;
-        --focus: #8d7cf6;
+        --surface-soft: #fff7fa;
+        --text: #402a33;
+        --text-muted: #7a5c66;
+        --border: #e6cad3;
+        --primary: #b76e86;
+        --primary-strong: #9f5d73;
+        --accent: #d999ad;
+        --focus: #c1809a;
         --success: #1f8a5c;
         --danger: #b1435c;
         --radius-md: 12px;
         --radius-lg: 18px;
-        --shadow: 0 10px 26px rgba(47, 158, 114, 0.12);
+        --shadow: 0 10px 26px rgba(183, 110, 134, 0.17);
         --shadow-soft: 0 5px 16px rgba(23, 49, 38, 0.08);
       }
 
@@ -63,7 +63,7 @@
       select:focus, button:focus, input[type="file"]:focus {
         outline: none;
         border-color: var(--focus);
-        box-shadow: 0 0 0 3px rgba(141, 124, 246, 0.2);
+        box-shadow: 0 0 0 3px rgba(193, 128, 154, 0.22);
       }
 
       button {
@@ -72,9 +72,9 @@
         background: linear-gradient(135deg, var(--primary), var(--accent));
         color: #fff;
         font-weight: 700;
-        box-shadow: 0 8px 16px rgba(47, 158, 114, 0.22);
+        box-shadow: 0 8px 16px rgba(183, 110, 134, 0.26);
       }
-      button:hover { transform: translateY(-1px); box-shadow: 0 12px 20px rgba(47, 158, 114, 0.26); }
+      button:hover { transform: translateY(-1px); box-shadow: 0 12px 20px rgba(183, 110, 134, 0.3); }
       button:active { transform: translateY(0); }
 
       .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
@@ -90,7 +90,7 @@
         height: 180px;
         object-fit: cover;
         border-radius: var(--radius-md);
-        background: #edf6f1;
+        background: #f7edf1;
         border: 1px solid var(--border);
       }
       .muted { color: var(--text-muted); font-size: 13px; line-height: 1.5; }
@@ -100,11 +100,11 @@
         margin-bottom: 6px;
         padding: 4px 9px;
         border-radius: 999px;
-        border: 1px solid #b9e8ce;
+        border: 1px solid #e2bdcb;
         font-size: 12px;
         font-weight: 600;
-        color: #2a6e4f;
-        background: #ecfbf3;
+        color: #7d465a;
+        background: #f9edf2;
       }
       .title { margin: 8px 0 7px; font-size: 1.1rem; }
       .tag-row { margin-top: 8px; }
