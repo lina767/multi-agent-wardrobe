@@ -2,7 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -92,7 +92,14 @@ def frontend_index():
     if index.exists():
         return FileResponse(index)
 
-    index = APP_DIR / "frontend" / "index.html"
+    return {"message": "Frontend build not found. Run frontend build or use Vite dev server."}
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+def frontend_spa_fallback(full_path: str, request: Request):
+    if full_path.startswith(("api/", "v1/", "docs", "openapi.json", "media/", "assets/")):
+        raise HTTPException(status_code=404, detail="Not Found")
+    index = FRONTEND_DIST_DIR / "index.html"
     if index.exists():
         return FileResponse(index)
-    return {"message": "Frontend not found. Open /docs for API."}
+    return {"message": "Frontend build not found. Run frontend build or use Vite dev server."}

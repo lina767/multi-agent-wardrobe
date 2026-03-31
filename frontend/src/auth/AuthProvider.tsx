@@ -9,6 +9,7 @@ type AuthContextValue = {
   session: Session | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  authError: string | null;
   sendMagicLink: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -19,9 +20,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
-    const supabase = getSupabaseClient();
+    let supabase;
+    try {
+      supabase = getSupabaseClient();
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "Supabase auth is not configured.");
+      setIsLoading(false);
+      return;
+    }
     let active = true;
 
     void supabase.auth.getSession().then(({ data }) => {
@@ -31,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session ?? null);
       setUser(data.session?.user ?? null);
       setApiAccessToken(data.session?.access_token ?? null);
+      setAuthError(null);
       setIsLoading(false);
     });
 
@@ -38,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession ?? null);
       setUser(nextSession?.user ?? null);
       setApiAccessToken(nextSession?.access_token ?? null);
+      setAuthError(null);
       setIsLoading(false);
     });
 
@@ -53,8 +64,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       isLoading,
       isAuthenticated: !!session?.access_token,
+      authError,
       sendMagicLink: async (email: string) => {
-        const supabase = getSupabaseClient();
+        let supabase;
+        try {
+          supabase = getSupabaseClient();
+        } catch (error) {
+          throw new Error(error instanceof Error ? error.message : "Supabase auth is not configured.");
+        }
         const emailRedirectTo = `${window.location.origin}/auth/callback`;
         const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo } });
         if (error) {
@@ -62,14 +79,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
       signOut: async () => {
-        const supabase = getSupabaseClient();
+        let supabase;
+        try {
+          supabase = getSupabaseClient();
+        } catch {
+          setSession(null);
+          setUser(null);
+          setApiAccessToken(null);
+          return;
+        }
         const { error } = await supabase.auth.signOut();
         if (error) {
           throw error;
         }
       },
     }),
-    [user, session, isLoading],
+    [user, session, isLoading, authError],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

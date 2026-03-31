@@ -31,11 +31,11 @@ export function App() {
         </NavLink>
       </nav>
       <Routes>
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/wardrobe" element={<WardrobePage />} />
-        <Route path="/onboarding" element={<OnboardingPage />} />
-        <Route path="/daily" element={<DailyOutfitPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="profile" element={<ProfilePage />} />
+        <Route path="wardrobe" element={<WardrobePage />} />
+        <Route path="onboarding" element={<OnboardingPage />} />
+        <Route path="daily" element={<DailyOutfitPage />} />
+        <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/dashboard/profile" replace />} />
       </Routes>
     </main>

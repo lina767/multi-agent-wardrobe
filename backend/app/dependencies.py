@@ -6,10 +6,13 @@ from typing import Any
 import jwt
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
+from jwt import PyJWKClient
 
 from app.db.models import User
 from app.config import settings
 from app.db.session import get_db
+
+_JWK_CLIENT: PyJWKClient | None = None
 
 
 def _extract_bearer_token(authorization: str | None) -> str:
@@ -25,19 +28,40 @@ def _extract_bearer_token(authorization: str | None) -> str:
 
 
 def _decode_supabase_jwt(token: str) -> dict[str, Any]:
-    if not settings.supabase_jwt_secret:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Auth not configured")
-    try:
-        # Supabase access tokens are HS256 by default for local projects.
-        payload = jwt.decode(
-            token,
-            settings.supabase_jwt_secret,
-            algorithms=["HS256"],
-            options={"verify_aud": False},
-        )
-    except jwt.InvalidTokenError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
-    return payload
+    if settings.supabase_jwt_secret:
+        try:
+            # Local Supabase tokens are usually HS256.
+            return jwt.decode(
+                token,
+                settings.supabase_jwt_secret,
+                algorithms=["HS256"],
+                options={"verify_aud": False},
+            )
+        except jwt.InvalidTokenError as exc:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
+
+    if settings.supabase_url:
+        global _JWK_CLIENT
+        if _JWK_CLIENT is None:
+            jwks_url = f"{settings.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
+            _JWK_CLIENT = PyJWKClient(jwks_url)
+        try:
+            signing_key = _JWK_CLIENT.get_signing_key_from_jwt(token)
+            return jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=["RS256"],
+                options={"verify_aud": False},
+            )
+        except jwt.InvalidTokenError as exc:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
+        except Exception as exc:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unable to validate token") from exc
+
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail="Auth not configured: set WARDROBE_SUPABASE_JWT_SECRET or WARDROBE_SUPABASE_URL",
+    )
 
 
 def _upsert_user_from_claims(db: Session, claims: dict[str, Any]) -> User:

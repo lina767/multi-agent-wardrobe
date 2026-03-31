@@ -60,7 +60,7 @@ export function RootApp() {
       </Route>
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
       <Route element={<ProtectedRoute />}>
-        <Route path="/dashboard" element={<DashboardLayout />} />
+        <Route path="/dashboard/*" element={<DashboardLayout />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -1,3 +1,4 @@
+import { MemoryRouter } from "react-router-dom";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -17,10 +18,14 @@ vi.stubGlobal("fetch", vi.fn(async (url: string) => {
 }) as unknown as typeof fetch);
 
 describe("App", () => {
-  it("renders core sections", async () => {
-    render(<App />);
-    expect(await screen.findByText("Wardrobe Intelligence")).toBeTruthy();
-    expect(screen.getByText(/Add Item/)).toBeTruthy();
-    expect(screen.getByText(/Suggestions/)).toBeTruthy();
+  it("renders dashboard navigation", async () => {
+    render(
+      <MemoryRouter initialEntries={["/dashboard/profile"]}>
+        <App />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText("Multi-Agent Wardrobe Dashboard")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /1\. Profile/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /4\. Daily Outfit Intelligence/ })).toBeTruthy();
   });
 });

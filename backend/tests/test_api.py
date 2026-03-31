@@ -332,3 +332,95 @@ def test_profile_color_feedback_roundtrip(client: TestClient) -> None:
     payload = response.json()
     assert payload["predicted_season"] == "true_summer"
     assert payload["corrected_season"] == "cool_winter"
+
+
+def test_profile_me_update_and_readback(client: TestClient) -> None:
+    initial = client.get("/api/v1/profile/me")
+    assert initial.status_code == 200
+
+    update = client.patch(
+        "/api/v1/profile/me",
+        json={
+            "name": "Lina",
+            "age": 29,
+            "life_phase": "career-growth",
+            "figure_analysis": "balanced silhouette",
+        },
+    )
+    assert update.status_code == 200
+    payload = update.json()
+    assert payload["name"] == "Lina"
+    assert payload["age"] == 29
+    assert payload["life_phase"] == "career-growth"
+    assert payload["figure_analysis"] == "balanced silhouette"
+
+    reread = client.get("/api/v1/profile/me")
+    assert reread.status_code == 200
+    assert reread.json()["name"] == "Lina"
+
+
+def test_profile_selfie_upload_sets_url(client: TestClient) -> None:
+    files = {"selfie": ("selfie.png", io.BytesIO(b"fakepngdata"), "image/png")}
+    response = client.post("/api/v1/profile/selfie", files=files)
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["selfie_url"] is not None
+    assert payload["selfie_url"].startswith("/media/profile/")
+
+
+def test_onboarding_runs_agents_and_returns_top3(client: TestClient) -> None:
+    _seed_wardrobe(client)
+    response = client.post(
+        "/api/v1/profile/onboarding",
+        json={
+            "name": "Lina",
+            "age": 29,
+            "life_phase": "new-role",
+            "figure_analysis": "structured shoulders",
+            "mood": "focus",
+            "occasion": "work",
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert "profile" in payload
+    assert "temporal_state" in payload
+    assert len(payload["suggestions"]) <= 3
+
+
+def test_settings_email_update(client: TestClient) -> None:
+    response = client.patch("/api/v1/settings/email", json={"email": "new-email@example.com"})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["email"] == "new-email@example.com"
+
+
+def test_settings_email_update_invalid_rejected(client: TestClient) -> None:
+    response = client.patch("/api/v1/settings/email", json={"email": "invalid-email"})
+    assert response.status_code == 400
+    assert "Invalid email" in response.json()["detail"]
+
+
+def test_wardrobe_weather_tags_and_filters(client: TestClient) -> None:
+    create = client.post(
+        "/api/v1/wardrobe/items",
+        json={
+            "name": "Rain Jacket",
+            "category": "outer",
+            "color_families": ["cool"],
+            "formality": "casual",
+            "season_tags": ["autumn"],
+            "weather_tags": ["rain", "wind"],
+            "is_available": True,
+            "style_tags": ["functional"],
+        },
+    )
+    assert create.status_code == 201
+    created = create.json()
+    assert "rain" in created["weather_tags"]
+
+    filtered = client.get("/api/v1/wardrobe/items?weather_tag=rain")
+    assert filtered.status_code == 200
+    rows = filtered.json()
+    assert len(rows) >= 1
+    assert any("rain" in row["weather_tags"] for row in rows)

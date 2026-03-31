@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 
 export function LoginPage() {
-  const { sendMagicLink } = useAuth();
+  const { sendMagicLink, authError } = useAuth();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -40,6 +40,7 @@ export function LoginPage() {
           </button>
         </form>
         {status ? <p>{status}</p> : null}
+        {authError ? <p className="error">{authError}</p> : null}
         {error ? <p className="error">{error}</p> : null}
         <p>
           <Link to="/">Back to website</Link>
