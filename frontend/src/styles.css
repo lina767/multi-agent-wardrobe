@@ -490,7 +490,7 @@ button:hover {
 }
 
 .wardrobeSummary {
-  margin: 0.5rem 0 0.85rem;
+  margin: 0.45rem 0 0.1rem;
 }
 
 .wardrobePage {
@@ -503,16 +503,24 @@ button:hover {
   gap: 0.35rem;
 }
 
+.wardrobeHeader .sectionHead {
+  margin-bottom: 0.1rem;
+}
+
 .wardrobeHeader h2 {
   margin: 0.1rem 0 0.15rem;
+  font-size: clamp(1.65rem, 2.6vw, 2.15rem);
+  letter-spacing: 0.005em;
 }
 
 .wardrobeIntro {
   max-width: 72ch;
+  margin: 0;
 }
 
 .wardrobeBlock {
   background: #fffcf6;
+  border-color: #d6c7b2;
 }
 
 .wardrobeComposer {
@@ -530,6 +538,7 @@ button:hover {
 
 .wardrobeControls {
   background: #fff9f0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
 .wardrobeControlsGrid {
@@ -547,6 +556,7 @@ button:hover {
 
 .wardrobeResetButton {
   min-height: 40px;
+  background: linear-gradient(180deg, #fff9f3, #efdfcb);
 }
 
 .wardrobeList {
@@ -556,6 +566,10 @@ button:hover {
 
 .wardrobeEmptyState {
   margin-top: 0;
+  background: linear-gradient(180deg, #fbf5ec, #f7eedf);
+  border-style: solid;
+  border-color: #d8c5ab;
+  padding: 0.95rem;
 }
 
 .wardrobeItems {
@@ -564,10 +578,23 @@ button:hover {
 
 .wardrobeItem {
   gap: 0.95rem;
+  border-color: #d7c8b3;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.wardrobeItem:hover {
+  transform: translateY(-1px);
+  border-color: #c5ae91;
+  box-shadow: 0 10px 18px rgba(80, 54, 29, 0.08);
 }
 
 .wardrobeItemBody p {
   margin: 0.2rem 0;
+}
+
+.wardrobeItemBody h3 {
+  margin: 0.05rem 0 0.25rem;
+  font-size: 1.06rem;
 }
 
 .wardrobeItemActions {
@@ -848,6 +875,7 @@ button:hover {
 
   .wardrobeControlsGrid {
     grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 0.6rem 0.7rem;
   }
 
   .wardrobeBulkUpload {
@@ -861,5 +889,14 @@ button:hover {
 
   .wardrobeResetButton {
     grid-column: span 2;
+  }
+
+  .wardrobeControls .field {
+    gap: 0.2rem;
+    font-size: 0.9rem;
+  }
+
+  .wardrobeControls select {
+    min-height: 40px;
   }
 }
