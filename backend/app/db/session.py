@@ -34,5 +34,7 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db() -> None:
     from app.db.base import Base  # noqa: PLC0415
+    from app.db import models as _legacy_models  # noqa: F401, PLC0415
+    from app import models as _new_models  # noqa: F401, PLC0415
 
     Base.metadata.create_all(bind=engine)

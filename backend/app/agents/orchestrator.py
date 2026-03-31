@@ -1,72 +1,112 @@
-"""Supervisor: merges agent partial scores with conflict-aware weights."""
+"""Rule-based supervisor for top-3 outfit suggestions."""
 
-from app.domain.entities import AgentEvaluationResult
-from app.domain.enums import EventType
-from app.domain.scoring import clamp_score, decision_trace_entry, merge_partial_scores
+from __future__ import annotations
+
+from itertools import product
+from typing import Any
+
+from app.agents.base import AgentContext, AgentOutput, BaseAgent
+from app.agents.constants import CATEGORY_SLOT_MAP, MOOD_ARCHETYPES, OCCASION_FORMALITY_TARGET
 
 
-class OrchestratorAgent:
+class OrchestratorAgent(BaseAgent):
     name = "orchestrator"
+    weights = {
+        "color_harmony": 0.25,
+        "style_match": 0.25,
+        "context_fit": 0.25,
+        "mood_alignment": 0.15,
+        "sustainability": 0.10,
+    }
 
-    def merge(
-        self,
-        results: list[AgentEvaluationResult],
-        event_type: EventType,
-    ) -> tuple[float, dict[str, float], list[str], list[dict], float]:
-        """
-        Returns (total_score, partial_map, reasons, trace, orchestrator_confidence).
-        """
-        partials: dict[str, float] = {}
-        reasons: list[str] = []
-        trace: list[dict] = []
-        for r in results:
-            partials.update(r.partial_scores)
-            reasons.extend(r.reasons)
-            trace.extend(r.trace)
+    async def run(self, context: AgentContext) -> AgentOutput:
+        outfits = self._build_outfits(context.wardrobe_items)[:120]
+        ranked = sorted(
+            [self._score_outfit(items, context) for items in outfits],
+            key=lambda row: row["total_score"],
+            reverse=True,
+        )[:3]
+        return AgentOutput(agent_name=self.name, payload={"suggestions": ranked})
 
-        weights = self._weights_for_event(event_type)
-        total = merge_partial_scores(weights, partials)
+    def _build_outfits(self, items: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+        by_slot: dict[str, list[dict[str, Any]]] = {"top": [], "bottom": [], "shoes": [], "outer": [], "accessory": []}
+        for item in items:
+            slot = CATEGORY_SLOT_MAP.get(item.get("category", ""), "")
+            if slot in by_slot and item.get("is_available", True):
+                by_slot[slot].append(item)
+        if not by_slot["top"] or not by_slot["bottom"] or not by_slot["shoes"]:
+            return []
+        output: list[list[dict[str, Any]]] = []
+        for top, bottom, shoes in product(by_slot["top"], by_slot["bottom"], by_slot["shoes"]):
+            output.append([top, bottom, shoes])
+            for outer in by_slot["outer"][:2]:
+                output.append([top, bottom, shoes, outer])
+        return output
 
-        # Conflict resolution narrative
-        if event_type == EventType.MEETING:
-            reasons.append("Supervisor: meeting context upweights context_fit + formality-related signals.")
-        elif event_type == EventType.DATE:
-            reasons.append("Supervisor: date context balances style_fit and context_fit.")
-
-        spread = max(partials.values()) - min(partials.values()) if partials else 0.0
-        confidence = clamp_score(spread * 1.2 + 0.05)
-        partials_out = dict(partials)
-        partials_out["orchestrator_confidence"] = confidence
-
-        trace.append(
-            decision_trace_entry(
-                self.name,
-                "weights",
-                weights,
-                "Event-driven weight map for partial score merge.",
-            )
+    def _score_outfit(self, items: list[dict[str, Any]], context: AgentContext) -> dict[str, Any]:
+        color = self._score_color(items)
+        style = self._score_style(items, context.occasion)
+        ctx = self._score_context(items, context)
+        mood = self._score_mood(items, context.mood)
+        sustainability = self._score_sustainability(items)
+        total = (
+            color * self.weights["color_harmony"]
+            + style * self.weights["style_match"]
+            + ctx * self.weights["context_fit"]
+            + mood * self.weights["mood_alignment"]
+            + sustainability * self.weights["sustainability"]
         )
-        trace.append(
-            decision_trace_entry(
-                self.name,
-                "total_pre_evidence",
-                round(total, 4),
-                "Weighted merge before evidence adjustments.",
-            )
-        )
-        return total, partials_out, reasons, trace, confidence
-
-    def _weights_for_event(self, event: EventType) -> dict[str, float]:
-        base = {
-            "harmony": 1.0,
-            "style_fit": 1.0,
-            "wardrobe_coherence": 0.9,
-            "context_fit": 1.1,
+        names = ", ".join(i.get("name", "item") for i in items)
+        return {
+            "items": [i["id"] for i in items],
+            "item_names": [i.get("name", "item") for i in items],
+            "total_score": round(total, 3),
+            "reasoning_breakdown": {
+                "color_score": round(color, 3),
+                "style_score": round(style, 3),
+                "context_score": round(ctx, 3),
+                "mood_alignment": round(mood, 3),
+                "sustainability": round(sustainability, 3),
+            },
+            "explanation": f"This outfit because it balances {context.mood} intent with {context.occasion} context: {names}.",
         }
-        if event == EventType.MEETING:
-            return {**base, "context_fit": 1.45, "style_fit": 0.95, "harmony": 1.0}
-        if event == EventType.DATE:
-            return {**base, "style_fit": 1.25, "context_fit": 1.05}
-        if event == EventType.HOME:
-            return {**base, "context_fit": 0.85, "style_fit": 1.05, "wardrobe_coherence": 1.0}
-        return base
+
+    def _score_color(self, items: list[dict[str, Any]]) -> float:
+        tags = [set(i.get("color_families", [])) for i in items]
+        overlap = 0
+        pairs = 0
+        for idx, left in enumerate(tags):
+            for right in tags[idx + 1 :]:
+                pairs += 1
+                overlap += len(left & right)
+        return min(0.45 + (overlap / max(pairs, 1)) * 0.25, 1.0)
+
+    def _score_style(self, items: list[dict[str, Any]], occasion: str) -> float:
+        target = OCCASION_FORMALITY_TARGET.get(occasion, 0.5)
+        formalities = [float(i.get("formality_score", 0.5)) for i in items]
+        avg = sum(formalities) / max(len(formalities), 1)
+        return max(0.0, 1.0 - abs(avg - target))
+
+    def _score_context(self, items: list[dict[str, Any]], context: AgentContext) -> float:
+        weather = context.weather or {}
+        temp = weather.get("temperature_c")
+        has_outer = any(i.get("category") == "outer" for i in items)
+        if temp is not None and temp < 8 and not has_outer:
+            return 0.35
+        if temp is not None and temp > 24 and has_outer:
+            return 0.5
+        return 0.85
+
+    def _score_mood(self, items: list[dict[str, Any]], mood: str) -> float:
+        archetype = MOOD_ARCHETYPES.get(mood.lower(), {})
+        keywords = archetype.get("keywords", [])
+        text = " ".join(f"{i.get('name', '')} {' '.join(i.get('style_tags', []))}" for i in items).lower()
+        matches = sum(1 for kw in keywords if kw in text)
+        return min(0.4 + matches * 0.15, 1.0)
+
+    def _score_sustainability(self, items: list[dict[str, Any]]) -> float:
+        wears = [int(i.get("wear_count", 0)) for i in items]
+        if not wears:
+            return 0.5
+        reused = sum(1 for w in wears if w > 1)
+        return min(0.4 + (reused / len(wears)) * 0.6, 1.0)

@@ -1,241 +1,142 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Inventory Manager</title>
+    <title>Wardrobe Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
     <style>
       :root {
-        --bg: #fcf4f6;
-        --bg-accent: #f7eaf1;
-        --surface: #ffffff;
-        --surface-soft: #fff7fa;
-        --text: #402a33;
-        --text-muted: #7a5c66;
-        --border: #e6cad3;
-        --primary: #b76e86;
-        --primary-strong: #9f5d73;
-        --accent: #d999ad;
-        --focus: #c1809a;
-        --success: #1f8a5c;
-        --danger: #b1435c;
-        --radius-md: 12px;
-        --radius-lg: 18px;
-        --shadow: 0 10px 26px rgba(183, 110, 134, 0.17);
-        --shadow-soft: 0 5px 16px rgba(23, 49, 38, 0.08);
+        --cream: #f8f6f1;
+        --brown: #8b6544;
+        --sage: #7a8c6e;
+        --rose: #b5727a;
+        --ink: #1a1a1a;
+        --panel: #fffdf8;
+        --line: #e8ddce;
+        --shadow: 0 10px 30px rgba(26, 26, 26, 0.08);
       }
-
       * { box-sizing: border-box; }
-
       body {
         margin: 0;
-        color: var(--text);
-        font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-        background: radial-gradient(circle at top right, var(--bg-accent), transparent 45%), var(--bg);
+        color: var(--ink);
+        font-family: "DM Sans", sans-serif;
+        background: var(--cream);
       }
-
-      .wrap { max-width: 1120px; margin: 32px auto; padding: 0 20px 28px; }
-      h1 { margin: 0 0 18px; font-size: clamp(1.7rem, 2.6vw, 2.2rem); letter-spacing: 0.01em; }
-
-      .panel {
-        background: linear-gradient(180deg, var(--surface), var(--surface-soft));
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        padding: 16px;
-        margin-bottom: 18px;
-        box-shadow: var(--shadow-soft);
-      }
-
-      .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-      label { display: inline-flex; align-items: center; gap: 8px; color: var(--text-muted); font-weight: 600; }
-
-      select, button, input[type="file"] {
-        border: 1px solid var(--border);
-        border-radius: var(--radius-md);
-        padding: 9px 12px;
-        background: #fff;
-        color: var(--text);
-        font: inherit;
-        transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, background-color 0.18s ease;
-      }
-
-      select:hover, input[type="file"]:hover { border-color: var(--primary); }
-      select:focus, button:focus, input[type="file"]:focus {
-        outline: none;
-        border-color: var(--focus);
-        box-shadow: 0 0 0 3px rgba(193, 128, 154, 0.22);
-      }
-
-      button {
-        cursor: pointer;
-        border-color: transparent;
-        background: linear-gradient(135deg, var(--primary), var(--accent));
-        color: #fff;
-        font-weight: 700;
-        box-shadow: 0 8px 16px rgba(183, 110, 134, 0.26);
-      }
-      button:hover { transform: translateY(-1px); box-shadow: 0 12px 20px rgba(183, 110, 134, 0.3); }
-      button:active { transform: translateY(0); }
-
-      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
-      .card {
-        background: linear-gradient(180deg, var(--surface), var(--surface-soft));
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        padding: 13px;
-        box-shadow: var(--shadow);
-      }
-      .img {
-        width: 100%;
-        height: 180px;
-        object-fit: cover;
-        border-radius: var(--radius-md);
-        background: #f7edf1;
-        border: 1px solid var(--border);
-      }
-      .muted { color: var(--text-muted); font-size: 13px; line-height: 1.5; }
-      .pill {
-        display: inline-block;
-        margin-right: 6px;
-        margin-bottom: 6px;
-        padding: 4px 9px;
-        border-radius: 999px;
-        border: 1px solid #e2bdcb;
-        font-size: 12px;
-        font-weight: 600;
-        color: #7d465a;
-        background: #f9edf2;
-      }
-      .title { margin: 8px 0 7px; font-size: 1.1rem; }
-      .tag-row { margin-top: 8px; }
-      .actions { margin-top: 12px; display: flex; gap: 8px; align-items: center; }
-      .ok { color: var(--success); font-size: 13px; font-weight: 600; }
-      .err { color: var(--danger); font-size: 13px; font-weight: 600; }
+      .app { max-width: 760px; margin: 0 auto; padding: 24px 16px 40px; }
+      h1, h2, h3 { font-family: "DM Serif Display", serif; margin: 0; }
+      h1 { font-size: clamp(2rem, 7vw, 2.7rem); color: var(--brown); }
+      .sub { margin-top: 10px; color: #5d5348; line-height: 1.5; }
+      .card { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 16px; box-shadow: var(--shadow); margin-top: 16px; }
+      .top-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+      .weather { border: 1px solid var(--line); padding: 8px 10px; border-radius: 999px; font-size: 13px; color: #5d5348; }
+      .label { color: #7c6d5e; font-weight: 600; font-size: 13px; margin-bottom: 10px; display: block; }
+      .moods, .occasions { display: flex; gap: 8px; overflow: auto; padding-bottom: 4px; }
+      .chip { border: 1px solid var(--line); background: #fff; color: #574739; border-radius: 999px; padding: 9px 12px; font: inherit; cursor: pointer; }
+      .chip.active { background: var(--brown); color: #fff; border-color: var(--brown); }
+      .outfit { border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-top: 12px; background: #fff; }
+      .outfit-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+      .score { font-weight: 700; color: var(--sage); }
+      .tiny { color: #7b6e60; font-size: 13px; margin-top: 6px; }
+      details { margin-top: 10px; }
+      summary { cursor: pointer; color: var(--rose); font-weight: 700; }
+      .bars { display: grid; gap: 8px; margin-top: 10px; }
+      .bar { display: grid; grid-template-columns: 84px 1fr 42px; align-items: center; gap: 8px; font-size: 13px; }
+      .track { background: #efe7dd; border-radius: 999px; overflow: hidden; height: 8px; }
+      .fill { height: 8px; background: linear-gradient(90deg, var(--sage), var(--brown)); }
+      .hint { margin-top: 18px; color: #6d6155; font-size: 14px; }
+      @media (max-width: 520px) { .app { padding: 18px 12px 30px; } }
     </style>
   </head>
   <body>
-    <div class="wrap">
-      <h1>Inventory Datenbank</h1>
-      <div class="panel row">
-        <label>Kategorie:
-          <select id="categoryFilter">
-            <option value="all">Alle</option>
-            <option value="top">Top</option>
-            <option value="bottom">Bottom</option>
-            <option value="outer">Outer</option>
-            <option value="shoes">Shoes</option>
-            <option value="accessory">Accessory</option>
-          </select>
-        </label>
-        <label>Sortierung:
-          <select id="sortBy">
-            <option value="name_asc">Name (A-Z)</option>
-            <option value="name_desc">Name (Z-A)</option>
-            <option value="price_asc">Preis (aufsteigend)</option>
-            <option value="price_desc">Preis (absteigend)</option>
-            <option value="newest">Neueste zuerst</option>
-            <option value="oldest">Älteste zuerst</option>
-          </select>
-        </label>
-        <button id="reloadBtn">Neu laden</button>
-        <span id="status" class="muted"></span>
+    <main class="app">
+      <div class="top-row">
+        <h1>Daily Outfit Intelligence</h1>
+        <div id="weatherBadge" class="weather">Weather: --</div>
       </div>
-      <div id="list" class="grid"></div>
-    </div>
+      <p class="sub">Reduce decision fatigue: we rank only 3 looks so getting dressed feels effortless.</p>
+      <section class="card">
+        <span class="label">How do you want to feel today?</span>
+        <div id="moodStrip" class="moods"></div>
+        <span class="label" style="margin-top: 14px">Occasion</span>
+        <div id="occasionStrip" class="occasions"></div>
+      </section>
+      <section class="card">
+        <h2 style="font-size: 1.45rem; color: var(--brown)">Top 3 Suggestions</h2>
+        <div id="suggestions"></div>
+      </section>
+      <p class="hint">Built on enclothed cognition and choice-overload research: fewer, better options improve confidence and satisfaction.</p>
+    </main>
 
     <script>
-      // Set this in Vercel by inlining script before this block:
-      // window.__API_BASE__ = "https://your-railway-app.up.railway.app"
       const API_BASE = window.__API_BASE__ || "";
-      const API = `${API_BASE}/v1/wardrobe/items`;
-      let allItems = [];
+      const moods = [
+        { id: "power", icon: "⚡", label: "Power" },
+        { id: "creative", icon: "🎨", label: "Creative" },
+        { id: "comfort", icon: "☁️", label: "Comfort" },
+        { id: "social", icon: "✨", label: "Social" },
+        { id: "focus", icon: "🎯", label: "Focus" },
+      ];
+      const occasions = ["casual", "work", "date", "event", "active"];
+      let currentMood = "focus";
+      let currentOccasion = "casual";
 
-      async function fetchItems() {
-        const status = document.getElementById("status");
-        status.textContent = "Lade...";
-        const res = await fetch(API);
+      function renderChips() {
+        const moodStrip = document.getElementById("moodStrip");
+        moodStrip.innerHTML = moods.map((m) => `<button class="chip ${m.id === currentMood ? "active" : ""}" data-mood="${m.id}">${m.icon} ${m.label}</button>`).join("");
+        const occasionStrip = document.getElementById("occasionStrip");
+        occasionStrip.innerHTML = occasions.map((o) => `<button class="chip ${o === currentOccasion ? "active" : ""}" data-occ="${o}">${o[0].toUpperCase() + o.slice(1)}</button>`).join("");
+      }
+
+      async function loadSuggestions() {
+        const url = `${API_BASE}/api/v1/suggestions?mood=${encodeURIComponent(currentMood)}&occasion=${encodeURIComponent(currentOccasion)}`;
+        const res = await fetch(url);
+        const container = document.getElementById("suggestions");
         if (!res.ok) {
-          status.textContent = "Fehler beim Laden";
+          container.innerHTML = `<p class="tiny">No suggestions yet. Add more wardrobe items to unlock rankings.</p>`;
           return;
         }
-        allItems = await res.json();
-        status.textContent = `${allItems.length} Items`;
-        render();
-      }
-
-      function applyFilterSort(items) {
-        const cat = document.getElementById("categoryFilter").value;
-        const sortBy = document.getElementById("sortBy").value;
-        let out = [...items];
-        if (cat !== "all") out = out.filter((i) => i.category === cat);
-        out.sort((a, b) => {
-          if (sortBy === "name_asc") return a.name.localeCompare(b.name);
-          if (sortBy === "name_desc") return b.name.localeCompare(a.name);
-          if (sortBy === "price_asc") return (a.purchase_price ?? 999999) - (b.purchase_price ?? 999999);
-          if (sortBy === "price_desc") return (b.purchase_price ?? -1) - (a.purchase_price ?? -1);
-          if (sortBy === "newest") return b.id - a.id;
-          if (sortBy === "oldest") return a.id - b.id;
-          return 0;
-        });
-        return out;
-      }
-
-      function render() {
-        const list = document.getElementById("list");
-        const rows = applyFilterSort(allItems);
-        list.innerHTML = "";
-        for (const item of rows) {
-          const card = document.createElement("div");
-          card.className = "card";
-          const imgUrl = item.image_url || "";
-          const tags = (item.style_tags || []).map((t) => `<span class="pill">${t}</span>`).join("");
-          card.innerHTML = `
-            <img class="img" src="${imgUrl}" alt="${item.name}" onerror="this.style.opacity='0.25'" />
-            <h3 class="title">${item.name}</h3>
-            <div class="muted">Kategorie: ${item.category} · Größe: ${item.size_label || "-"}</div>
-            <div class="muted">Marke: ${item.brand || "-"} · Material: ${item.material || "-"}</div>
-            <div class="muted">Preis: ${item.purchase_price ?? "-"} · Menge: ${item.quantity ?? 1}</div>
-            <div class="tag-row">${tags}</div>
-            <div class="actions">
-              <input type="file" accept="image/*" data-id="${item.id}" />
-              <button data-upload="${item.id}">Bild hochladen</button>
-              <span id="msg-${item.id}" class="muted"></span>
+        const data = await res.json();
+        const weather = data.context.weather || {};
+        document.getElementById("weatherBadge").textContent = `Weather: ${weather.temperature_c ?? "--"}°C ${weather.condition || ""}`;
+        container.innerHTML = data.suggestions.map((s, idx) => `
+          <article class="outfit">
+            <div class="outfit-head">
+              <h3>Option ${idx + 1}</h3>
+              <span class="score">${Math.round(s.total_score * 100)}%</span>
             </div>
-          `;
-          list.appendChild(card);
-        }
-
-        for (const btn of document.querySelectorAll("button[data-upload]")) {
-          btn.addEventListener("click", async (e) => {
-            const id = e.target.getAttribute("data-upload");
-            const input = document.querySelector(`input[data-id='${id}']`);
-            const msg = document.getElementById(`msg-${id}`);
-            if (!input.files || !input.files[0]) {
-              msg.className = "err";
-              msg.textContent = "Bitte Datei wählen";
-              return;
-            }
-            const fd = new FormData();
-            fd.append("image", input.files[0]);
-            msg.className = "muted";
-            msg.textContent = "Upload...";
-            const res = await fetch(`${API_BASE}/v1/wardrobe/items/${id}/image`, { method: "POST", body: fd });
-            if (!res.ok) {
-              msg.className = "err";
-              msg.textContent = "Upload fehlgeschlagen";
-              return;
-            }
-            msg.className = "ok";
-            msg.textContent = "Gespeichert";
-            await fetchItems();
-          });
-        }
+            <p class="tiny"><strong>${s.item_names.join(" · ")}</strong></p>
+            <p class="tiny">${s.explanation}</p>
+            <details>
+              <summary>Why this outfit?</summary>
+              <div class="bars">
+                ${Object.entries(s.reasoning_breakdown).map(([k,v]) => `
+                  <div class="bar">
+                    <span>${k.replace("_", " ")}</span>
+                    <div class="track"><div class="fill" style="width:${Math.round(v * 100)}%"></div></div>
+                    <span>${Math.round(v * 100)}%</span>
+                  </div>`).join("")}
+              </div>
+            </details>
+          </article>
+        `).join("");
       }
 
-      document.getElementById("categoryFilter").addEventListener("change", render);
-      document.getElementById("sortBy").addEventListener("change", render);
-      document.getElementById("reloadBtn").addEventListener("click", fetchItems);
-      fetchItems();
+      document.addEventListener("click", (event) => {
+        const mood = event.target.getAttribute("data-mood");
+        const occ = event.target.getAttribute("data-occ");
+        if (mood) currentMood = mood;
+        if (occ) currentOccasion = occ;
+        if (mood || occ) {
+          renderChips();
+          loadSuggestions();
+        }
+      });
+
+      renderChips();
+      loadSuggestions();
     </script>
   </body>
 </html>

@@ -11,8 +11,9 @@ from app.api.routes import feedback, health, recommendations, wardrobe
 from app.bootstrap import ensure_default_user
 from app.config import settings
 from app.db.session import init_db
-from app.db.migrate import ensure_inventory_schema
+from app.db.migrate import ensure_agent_schema, ensure_inventory_schema
 from app.logging_config import configure_logging
+from app.routers import analytics, profile, suggestions
 
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ async def lifespan(app: FastAPI):
     db = db_session.SessionLocal()
     try:
         ensure_inventory_schema(db)
+        ensure_agent_schema(db)
         ensure_default_user(db)
         logger.info("application_startup", extra={"event": "startup", "user": "default_user"})
     finally:
@@ -49,6 +51,9 @@ app.include_router(health.router, prefix="/v1")
 app.include_router(wardrobe.router, prefix="/v1")
 app.include_router(recommendations.router, prefix="/v1")
 app.include_router(feedback.router, prefix="/v1")
+app.include_router(profile.router, prefix="/api/v1")
+app.include_router(suggestions.router, prefix="/api/v1")
+app.include_router(analytics.router, prefix="/api/v1")
 
 APP_DIR = Path(__file__).resolve().parent
 BASE_DIR = APP_DIR.parent
