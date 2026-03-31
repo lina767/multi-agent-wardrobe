@@ -47,6 +47,16 @@ def test_health(client: TestClient) -> None:
     assert r.json()["status"] == "ok"
 
 
+def test_embeddings_endpoint_returns_vector(client: TestClient) -> None:
+    r = client.post("/api/v1/embeddings", json={"input": "minimalist business casual outfit"})
+    assert r.status_code == 200
+    payload = r.json()
+    assert "data" in payload and len(payload["data"]) == 1
+    emb = payload["data"][0]["embedding"]
+    assert isinstance(emb, list)
+    assert len(emb) == 256
+
+
 def test_auth_me_returns_current_user(client: TestClient) -> None:
     response = client.get("/api/v1/auth/me")
     assert response.status_code == 200

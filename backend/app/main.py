@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import feedback, health, recommendations, wardrobe
+from app.api.routes import embeddings, feedback, health, recommendations, wardrobe
 from app.bootstrap import ensure_default_user
 from app.config import settings
 from app.db.session import init_db
@@ -60,6 +60,7 @@ app.include_router(health.router, prefix=API_PREFIX)
 app.include_router(wardrobe.router, prefix=API_PREFIX)
 app.include_router(recommendations.router, prefix=API_PREFIX)
 app.include_router(feedback.router, prefix=API_PREFIX)
+app.include_router(embeddings.router, prefix=API_PREFIX)
 app.include_router(profile.router, prefix=API_PREFIX)
 app.include_router(suggestions.router, prefix=API_PREFIX)
 app.include_router(analytics.router, prefix=API_PREFIX)
@@ -70,6 +71,7 @@ app.include_router(health.router, prefix=LEGACY_PREFIX, include_in_schema=False)
 app.include_router(wardrobe.router, prefix=LEGACY_PREFIX, include_in_schema=False)
 app.include_router(recommendations.router, prefix=LEGACY_PREFIX, include_in_schema=False)
 app.include_router(feedback.router, prefix=LEGACY_PREFIX, include_in_schema=False)
+app.include_router(embeddings.router, prefix=LEGACY_PREFIX, include_in_schema=False)
 app.include_router(profile.router, prefix=LEGACY_PREFIX, include_in_schema=False)
 app.include_router(suggestions.router, prefix=LEGACY_PREFIX, include_in_schema=False)
 app.include_router(analytics.router, prefix=LEGACY_PREFIX, include_in_schema=False)

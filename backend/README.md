@@ -73,6 +73,7 @@ Embedding options:
 
 - `endpoint`: own FastAPI service or OpenAI-compatible endpoint that returns embeddings.
 - `huggingface`: Hugging Face Inference API (`WARDROBE_HUGGINGFACE_EMBEDDING_*`).
+- Local default for quick testing: `POST /v1/embeddings` returns deterministic hash-based embeddings (no external API key required).
 
 ## Inventory Datenbank aufsetzen
 

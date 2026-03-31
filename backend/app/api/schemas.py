@@ -163,6 +163,24 @@ class HealthResponse(BaseModel):
     version: str = "v1"
 
 
+# --- Embeddings ---
+
+
+class EmbeddingRequest(BaseModel):
+    input: str = Field(..., min_length=1, max_length=4000)
+    model: str | None = None
+
+
+class EmbeddingData(BaseModel):
+    embedding: list[float]
+    index: int = 0
+
+
+class EmbeddingResponse(BaseModel):
+    data: list[EmbeddingData]
+    model: str
+
+
 # --- Temporal style intelligence ---
 
 
