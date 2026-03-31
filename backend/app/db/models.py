@@ -34,6 +34,7 @@ class WardrobeItem(Base):
     name: Mapped[str] = mapped_column(String(200))
     category: Mapped[str] = mapped_column(String(32))
     color_families_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    dominant_colors_json: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     formality: Mapped[str] = mapped_column(String(32), default="casual")
     season_tags_json: Mapped[list[str]] = mapped_column(JSON, default=list)
     weather_tags_json: Mapped[list[str]] = mapped_column(JSON, default=list)

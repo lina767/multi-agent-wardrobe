@@ -64,7 +64,7 @@ export function PublicHome() {
               <p>Continuously refine your profile, upload a portrait, and enrich your silhouette or body analysis.</p>
             </article>
             <article className="landingFeature">
-              <h3>Wardrobe Archive</h3>
+              <h3>Wardrobe</h3>
               <p>Manage clothing items, photos, categories, colors, weather tags, and formality in one place.</p>
             </article>
             <article className="landingFeature">

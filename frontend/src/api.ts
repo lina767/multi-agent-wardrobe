@@ -15,7 +15,9 @@ import type {
   WardrobeItemCreate,
 } from "./types";
 
-const API_BASE = (window as Window & { __API_BASE__?: string }).__API_BASE__ ?? "";
+const RUNTIME_API_BASE = (window as Window & { __API_BASE__?: string }).__API_BASE__;
+const ENV_API_BASE = import.meta.env.VITE_API_BASE_URL as string | undefined;
+const API_BASE = (ENV_API_BASE ?? RUNTIME_API_BASE ?? "").replace(/\/$/, "");
 const API_PREFIX = `${API_BASE}/api/v1`;
 let apiAccessToken: string | null = null;
 

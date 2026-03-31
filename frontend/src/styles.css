@@ -417,6 +417,7 @@ button:hover {
   grid-template-columns: 90px 1fr auto;
   gap: 0.8rem;
   align-items: start;
+  background: #fffdf9;
 }
 
 .thumbWrap {
@@ -446,6 +447,7 @@ button:hover {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-width: 150px;
 }
 
 .uploadButton input {
@@ -460,6 +462,28 @@ button:hover {
   text-align: center;
   cursor: pointer;
   background: #fbf4ea;
+}
+
+.wardrobeSummary {
+  margin: 0.5rem 0 0.85rem;
+}
+
+.wardrobeBlock {
+  margin-top: 0.85rem;
+  background: #fffcf6;
+}
+
+@media (max-width: 860px) {
+  .item {
+    grid-template-columns: 90px 1fr;
+  }
+
+  .actions {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
 }
 
 .suggestion {
@@ -535,44 +559,6 @@ button:hover {
   border-color: #9e896f;
   color: #4a3727;
   background: var(--accent-soft);
-}
-
-.telemetryPanel {
-  display: grid;
-  gap: 0.65rem;
-}
-
-.telemetryStats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.telemetryChip {
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 0.2rem 0.6rem;
-  font-size: 0.82rem;
-  background: #fffaf3;
-  color: #5c4d3e;
-}
-
-.telemetryList {
-  display: grid;
-  gap: 0.45rem;
-  max-height: 220px;
-  overflow: auto;
-}
-
-.telemetryItem {
-  border: 1px solid #eadfce;
-  border-radius: 10px;
-  padding: 0.5rem 0.65rem;
-  background: rgba(255, 251, 246, 0.7);
-}
-
-.telemetryItem p {
-  margin: 0.1rem 0;
 }
 
 .profileSelfie {

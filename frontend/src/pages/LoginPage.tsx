@@ -19,6 +19,11 @@ function formatAuthError(message: string, method: AuthMethod): string {
   return message;
 }
 
+function isRateLimitedAuthError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return lower.includes("email rate limit exceeded") || lower.includes("rate limit");
+}
+
 interface LoginPageProps {
   initialMode?: AuthMode;
 }
@@ -26,7 +31,7 @@ interface LoginPageProps {
 export function LoginPage({ initialMode = "login" }: LoginPageProps) {
   const { sendMagicLink, signInWithPassword, signUpWithPassword, requestPasswordReset, authError } = useAuth();
   const [mode, setMode] = useState<AuthMode>(initialMode);
-  const [method, setMethod] = useState<AuthMethod>("magic_link");
+  const [method, setMethod] = useState<AuthMethod>(initialMode === "signup" ? "password" : "magic_link");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -83,6 +88,9 @@ export function LoginPage({ initialMode = "login" }: LoginPageProps) {
     } catch (requestError) {
       const fallback = mode === "signup" ? "Unable to sign up." : "Unable to sign in.";
       const rawMessage = requestError instanceof Error ? requestError.message : fallback;
+      if (method === "magic_link" && isRateLimitedAuthError(rawMessage)) {
+        setMethod("password");
+      }
       setError(formatAuthError(rawMessage, method));
     } finally {
       setSubmitting(false);

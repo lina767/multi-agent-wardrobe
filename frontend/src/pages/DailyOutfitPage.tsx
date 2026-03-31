@@ -37,6 +37,11 @@ export function DailyOutfitPage({ onGeneratedSuggestion }: DailyOutfitPageProps)
   const [feedbackBusyId, setFeedbackBusyId] = useState<number | null>(null);
   const [logBusyId, setLogBusyId] = useState<number | null>(null);
   const [statusBusyId, setStatusBusyId] = useState<number | null>(null);
+  const scientificNote = response?.scientific_note;
+  const showScientificNote = Boolean(scientificNote && !scientificNote.toLowerCase().includes("silhouette"));
+  const visibleStateFactors = (response?.style_profile?.temporal_state?.state_factors ?? []).filter(
+    (factor) => !factor.toLowerCase().includes("silhouette"),
+  );
 
   async function handleLoad() {
     setLoading(true);
@@ -172,14 +177,14 @@ export function DailyOutfitPage({ onGeneratedSuggestion }: DailyOutfitPageProps)
           {response.context.weather.forecast_summary ?? response.context.weather.condition_raw ?? "no summary"}
         </p>
       ) : null}
-      {response?.scientific_note ? <p className="metaNote">{response.scientific_note}</p> : null}
+      {showScientificNote ? <p className="metaNote">{scientificNote}</p> : null}
       {wardrobeAnalytics?.gap_analysis?.[0] ? (
         <p className="metaNote">
           Closet opportunity: {wardrobeAnalytics.gap_analysis[0].suggestion} (potential +{wardrobeAnalytics.gap_analysis[0].estimated_new_outfits} outfits)
         </p>
       ) : null}
-      {response?.style_profile?.temporal_state?.state_factors?.length ? (
-        <p className="metaNote">Style signals: {response.style_profile.temporal_state.state_factors.join(", ")}</p>
+      {visibleStateFactors.length ? (
+        <p className="metaNote">Style signals: {visibleStateFactors.join(", ")}</p>
       ) : null}
       {loading ? <p className="metaNote">Generating three recommendations...</p> : null}
       {!loading && suggestions.length === 0 && !error ? (

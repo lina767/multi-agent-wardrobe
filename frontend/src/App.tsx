@@ -2,13 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { NavLink, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 
 import { api } from "./api";
-import { KpiTelemetryPanel } from "./components/KpiTelemetryPanel";
 import { DailyOutfitPage } from "./pages/DailyOutfitPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { WardrobePage } from "./pages/WardrobePage";
-import { trackEvent } from "./telemetry";
 
 export function App() {
   const navigate = useNavigate();
@@ -29,11 +27,6 @@ export function App() {
         }
         setHasProfile(Boolean(profile.name || profile.life_phase || profile.figure_analysis || profile.color_profile));
         setHasWardrobe(items.length > 0);
-        trackEvent("guided_step_viewed", {
-          step_status_profile: Boolean(profile.name || profile.life_phase || profile.figure_analysis || profile.color_profile),
-          step_status_wardrobe: items.length > 0,
-          step_status_daily: hasDailySuggestion,
-        });
       } catch {
         if (!active) {
           return;
@@ -94,13 +87,12 @@ export function App() {
           Continue setup
         </button>
       </section>
-      <KpiTelemetryPanel />
       <nav className="dashNav" aria-label="Dashboard navigation">
         <NavLink to="/dashboard/profile" className="dashLink">
           1. Identity
         </NavLink>
         <NavLink to="/dashboard/wardrobe" className="dashLink">
-          2. Wardrobe Archive
+          2. Wardrobe
         </NavLink>
         <NavLink to="/dashboard/onboarding" className="dashLink">
           3. Style Onboarding
@@ -122,9 +114,6 @@ export function App() {
             <DailyOutfitPage
               onGeneratedSuggestion={() => {
                 setHasDailySuggestion(true);
-                trackEvent("first_suggestion_generated", {
-                  source: "daily_page",
-                });
               }}
             />
           }

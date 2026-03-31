@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+import httpx
 import jwt
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
@@ -13,6 +14,35 @@ from app.config import settings
 from app.db.session import get_db
 
 _JWK_CLIENT: PyJWKClient | None = None
+
+
+def _validate_with_supabase_userinfo(token: str) -> dict[str, Any] | None:
+    if not settings.supabase_url:
+        return None
+    apikey = settings.supabase_anon_key or settings.supabase_service_key
+    if not apikey:
+        return None
+    url = f"{settings.supabase_url.rstrip('/')}/auth/v1/user"
+    try:
+        response = httpx.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "apikey": apikey,
+            },
+            timeout=8.0,
+        )
+    except Exception:
+        return None
+    if response.status_code >= 400:
+        return None
+    payload = response.json()
+    if not isinstance(payload, dict):
+        return None
+    # Normalize to JWT-like claims shape expected downstream.
+    payload.setdefault("sub", payload.get("id"))
+    payload.setdefault("email", payload.get("email"))
+    return payload
 
 
 def _extract_bearer_token(authorization: str | None) -> str:
@@ -56,6 +86,9 @@ def _decode_supabase_jwt(token: str) -> dict[str, Any]:
         except jwt.InvalidTokenError as exc:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
         except Exception as exc:
+            fallback_claims = _validate_with_supabase_userinfo(token)
+            if fallback_claims:
+                return fallback_claims
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unable to validate token") from exc
 
     raise HTTPException(

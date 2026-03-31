@@ -33,21 +33,22 @@ If these vars are not set, backend falls back to local file storage.
 
 ## 2) Vercel (Frontend)
 
-Deploy the `frontend/` folder as a static project.
+Deploy the `frontend/` folder as a Vite project.
 
-Before deploy, set API base in `frontend/index.html` by adding this small script before the main `<script>` block:
+Set this environment variable in Vercel (Project Settings -> Environment Variables):
 
-```html
-<script>
-  window.__API_BASE__ = "https://YOUR-RAILWAY-BACKEND.up.railway.app";
-</script>
-```
+- `VITE_API_BASE_URL=https://YOUR-RAILWAY-BACKEND.up.railway.app`
 
-Then deploy:
+Optional (if Supabase auth/storage is used by frontend):
+
+- `VITE_SUPABASE_URL=...`
+- `VITE_SUPABASE_ANON_KEY=...`
+
+Then deploy with:
 
 - Root directory: `frontend`
-- Build command: none
-- Output directory: `.`
+- Build command: `npm run build`
+- Output directory: `dist`
 
 ## 3) Local sanity checks
 

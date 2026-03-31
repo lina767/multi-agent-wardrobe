@@ -15,6 +15,7 @@ _INVENTORY_COLUMNS: dict[str, str] = {
     "processed_image_path": "TEXT",
     "vision_status": "TEXT DEFAULT 'pending'",
     "vision_error": "TEXT",
+    "dominant_colors_json": "JSON",
 }
 
 _OUTFIT_LOG_COLUMNS: dict[str, str] = {

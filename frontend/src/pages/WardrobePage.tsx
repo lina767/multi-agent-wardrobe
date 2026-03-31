@@ -51,6 +51,7 @@ export function WardrobePage() {
   });
 
   const sortedItems = useMemo(() => items, [items]);
+  const availableCount = useMemo(() => items.filter((item) => item.status === "clean").length, [items]);
 
   async function refreshItems() {
     setLoading(true);
@@ -174,123 +175,164 @@ export function WardrobePage() {
     <section className="card pageSection">
       <div className="sectionHead">
         <p className="eyebrow">Closet Management</p>
+        <p className="metaNote">{items.length} pieces loaded</p>
       </div>
-      <h2>Wardrobe Archive</h2>
+      <h2>Wardrobe</h2>
+      <p className="metaNote">Add pieces, upload photos, and keep laundry status up to date for better daily recommendations.</p>
       {error ? <p className="error">{error}</p> : null}
-      <form className="grid" onSubmit={handleCreateItem}>
-        <label className="field">
-          Name
-          <input required value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} />
-        </label>
-        <label className="field">
-          Category
-          <select
-            value={form.category}
-            onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value as WardrobeCategory }))}
+      <div className="wardrobeSummary row">
+        <span className="guideStep done">Ready to wear: {availableCount}</span>
+        <span className="guideStep">Needs care: {Math.max(0, items.length - availableCount)}</span>
+      </div>
+      <section className="card wardrobeBlock">
+        <div className="sectionHead">
+          <p className="eyebrow">Add Piece</p>
+        </div>
+        <form className="grid" onSubmit={handleCreateItem}>
+          <label className="field">
+            Name
+            <input required value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} />
+          </label>
+          <label className="field">
+            Category
+            <select
+              value={form.category}
+              onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value as WardrobeCategory }))}
+            >
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            Formality
+            <select
+              value={form.formality}
+              onChange={(event) => setForm((prev) => ({ ...prev, formality: event.target.value as DresscodeLevel }))}
+            >
+              {dresscodes.map((dresscode) => (
+                <option key={dresscode} value={dresscode}>
+                  {dresscode}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            Color family
+            <select
+              value={form.color_families[0]}
+              onChange={(event) => setForm((prev) => ({ ...prev, color_families: [event.target.value as ColorFamily] }))}
+            >
+              {colors.map((color) => (
+                <option key={color} value={color}>
+                  {color}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            Season notes
+            <input placeholder="spring, autumn" value={seasonTagsText} onChange={(event) => setSeasonTagsText(event.target.value)} />
+          </label>
+          <label className="field">
+            Weather notes
+            <input placeholder="cold, rain" value={weatherTagsText} onChange={(event) => setWeatherTagsText(event.target.value)} />
+          </label>
+          <label className="field">
+            Style cues
+            <input placeholder="classic, minimal" value={styleTagsText} onChange={(event) => setStyleTagsText(event.target.value)} />
+          </label>
+          <button type="submit">Add piece</button>
+        </form>
+      </section>
+      <section className="card wardrobeBlock">
+        <div className="sectionHead">
+          <p className="eyebrow">Import & Filter</p>
+        </div>
+        <div className="row">
+          <label className="uploadButton">
+            {uploadingBulk ? "Uploading..." : "Bulk import"}
+            <input type="file" accept="image/*" multiple onChange={(event) => void handleBulkUpload(event.target.files)} />
+          </label>
+          <label className="field inline">
+            Category
+            <select value={filters.category} onChange={(event) => setFilters((prev) => ({ ...prev, category: event.target.value as WardrobeCategory | "" }))}>
+              <option value="">all</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field inline">
+            Color
+            <select value={filters.color_family} onChange={(event) => setFilters((prev) => ({ ...prev, color_family: event.target.value as ColorFamily | "" }))}>
+              <option value="">all</option>
+              {colors.map((color) => (
+                <option key={color} value={color}>
+                  {color}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field inline">
+            Weather
+            <select value={filters.weather_tag} onChange={(event) => setFilters((prev) => ({ ...prev, weather_tag: event.target.value }))}>
+              <option value="">all</option>
+              {weatherTags.map((tag) => (
+                <option key={tag} value={tag}>
+                  {tag}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field inline">
+            Laundry
+            <select value={filters.status} onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value as LaundryStatus | "" }))}>
+              <option value="">all</option>
+              {laundryStatuses.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field inline">
+            Sort by
+            <select value={filters.sort_by} onChange={(event) => setFilters((prev) => ({ ...prev, sort_by: event.target.value as "id" | "name" }))}>
+              <option value="id">id</option>
+              <option value="name">name</option>
+            </select>
+          </label>
+          <label className="field inline">
+            Direction
+            <select value={filters.sort_dir} onChange={(event) => setFilters((prev) => ({ ...prev, sort_dir: event.target.value as "asc" | "desc" }))}>
+              <option value="asc">asc</option>
+              <option value="desc">desc</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={() =>
+              setFilters({
+                category: "",
+                color_family: "",
+                weather_tag: "",
+                status: "",
+                sort_by: "id",
+                sort_dir: "asc",
+              })
+            }
           >
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          Formality
-          <select
-            value={form.formality}
-            onChange={(event) => setForm((prev) => ({ ...prev, formality: event.target.value as DresscodeLevel }))}
-          >
-            {dresscodes.map((dresscode) => (
-              <option key={dresscode} value={dresscode}>
-                {dresscode}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          Color family
-          <select
-            value={form.color_families[0]}
-            onChange={(event) => setForm((prev) => ({ ...prev, color_families: [event.target.value as ColorFamily] }))}
-          >
-            {colors.map((color) => (
-              <option key={color} value={color}>
-                {color}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          Season notes
-          <input placeholder="spring, autumn" value={seasonTagsText} onChange={(event) => setSeasonTagsText(event.target.value)} />
-        </label>
-        <label className="field">
-          Weather notes
-          <input placeholder="cold, rain" value={weatherTagsText} onChange={(event) => setWeatherTagsText(event.target.value)} />
-        </label>
-        <label className="field">
-          Style cues
-          <input placeholder="classic, minimal" value={styleTagsText} onChange={(event) => setStyleTagsText(event.target.value)} />
-        </label>
-        <button type="submit">Add piece</button>
-      </form>
-      <div className="row">
-        <label className="uploadButton">
-          {uploadingBulk ? "Uploading..." : "Bulk import"}
-          <input type="file" accept="image/*" multiple onChange={(event) => void handleBulkUpload(event.target.files)} />
-        </label>
-        <label className="field inline">
-          Filter by category
-          <select value={filters.category} onChange={(event) => setFilters((prev) => ({ ...prev, category: event.target.value as WardrobeCategory | "" }))}>
-            <option value="">all</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field inline">
-          Filter by color
-          <select value={filters.color_family} onChange={(event) => setFilters((prev) => ({ ...prev, color_family: event.target.value as ColorFamily | "" }))}>
-            <option value="">all</option>
-            {colors.map((color) => (
-              <option key={color} value={color}>
-                {color}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field inline">
-          Filter by weather
-          <select value={filters.weather_tag} onChange={(event) => setFilters((prev) => ({ ...prev, weather_tag: event.target.value }))}>
-            <option value="">all</option>
-            {weatherTags.map((tag) => (
-              <option key={tag} value={tag}>
-                {tag}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field inline">
-          Laundry status
-          <select value={filters.status} onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value as LaundryStatus | "" }))}>
-            <option value="">all</option>
-            {laundryStatuses.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field inline">
-          Sort by
-          <select value={filters.sort_by} onChange={(event) => setFilters((prev) => ({ ...prev, sort_by: event.target.value as "id" | "name" }))}>
-            <option value="id">id</option>
-            <option value="name">name</option>
-          </select>
-        </label>
+            Reset filters
+          </button>
+        </div>
+      </section>
+      <div className="sectionHead">
+        <p className="eyebrow">Your Pieces</p>
       </div>
       {bulkResult ? <p className="metaNote">{bulkResult}</p> : null}
       {loading ? <p className="metaNote">Loading wardrobe...</p> : null}
