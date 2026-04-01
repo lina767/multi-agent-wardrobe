@@ -199,6 +199,30 @@ def test_upload_inventory_image(client: TestClient) -> None:
     assert body["image_url"].startswith("/media/uploads/")
 
 
+def test_upload_inventory_image_accepts_heic_extension(client: TestClient) -> None:
+    create = client.post(
+        "/api/v1/wardrobe/items",
+        json={
+            "name": "HEIC Top",
+            "category": "top",
+            "color_families": ["neutral"],
+            "formality": "casual",
+            "season_tags": [],
+            "is_available": True,
+            "style_tags": [],
+        },
+    )
+    assert create.status_code == 201
+    iid = create.json()["id"]
+
+    files = {"image": ("top.heic", io.BytesIO(b"fakeheicdata"), "image/heic")}
+    up = client.post(f"/api/v1/wardrobe/items/{iid}/image", files=files)
+    assert up.status_code == 200
+    body = up.json()
+    assert body["image_url"] is not None
+    assert body["image_url"].startswith("/media/uploads/")
+
+
 def test_bulk_upload_and_analysis(client: TestClient) -> None:
     files = [
         ("images", ("black_tee.png", io.BytesIO(b"fakepngdata1"), "image/png")),
@@ -213,6 +237,15 @@ def test_bulk_upload_and_analysis(client: TestClient) -> None:
     assert len(body["items"]) == 3
     assert body["analysis"] is not None
     assert "outfit_potential" in body["analysis"]
+
+
+def test_bulk_upload_accepts_heic_extension(client: TestClient) -> None:
+    files = [("images", ("shirt.heic", io.BytesIO(b"fakeheicbulk"), "image/heic"))]
+    data = {"analyze": "false", "category": "top", "formality": "casual", "color_family": "neutral"}
+    response = client.post("/api/v1/wardrobe/bulk-upload", files=files, data=data)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["uploaded_count"] == 1
 
 
 def test_profile_checkin_and_state(client: TestClient) -> None:

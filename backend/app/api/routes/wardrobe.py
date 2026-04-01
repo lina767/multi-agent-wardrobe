@@ -1,4 +1,5 @@
 from pathlib import Path
+from io import BytesIO
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
@@ -16,7 +17,35 @@ from app.services.vision_pipeline import vision_pipeline
 from app.storage import delete_image, resolve_image_url, upload_image
 
 router = APIRouter(prefix="/wardrobe", tags=["wardrobe"])
-ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif", "heic", "heif"}
+
+try:
+    from PIL import Image
+except Exception:  # pragma: no cover
+    Image = None
+try:
+    from pillow_heif import register_heif_opener
+except Exception:  # pragma: no cover
+    register_heif_opener = None
+
+
+def _normalize_upload_payload(payload: bytes, extension: str) -> tuple[bytes, str]:
+    ext = extension.lower().lstrip(".")
+    if ext not in {"heic", "heif"}:
+        return payload, ext
+    if Image is None or register_heif_opener is None:
+        # Accept HEIC as-is when conversion libs are unavailable.
+        return payload, ext
+    try:
+        register_heif_opener()
+        with Image.open(BytesIO(payload)) as image:
+            rgb = image.convert("RGB")
+            out = BytesIO()
+            rgb.save(out, format="JPEG", quality=92)
+        return out.getvalue(), "jpg"
+    except Exception:
+        # Keep upload path resilient; fallback to original bytes/ext.
+        return payload, ext
 
 
 @router.get("/items", response_model=list[WardrobeItemRead])
@@ -146,6 +175,7 @@ async def upload_item_image(
         raise HTTPException(status_code=400, detail=f"Unsupported image type: {ext}")
 
     payload = await image.read()
+    payload, ext = _normalize_upload_payload(payload, ext)
     try:
         image_ref = upload_image(row.id, payload, ext)
     except RuntimeError as exc:
@@ -214,6 +244,7 @@ async def bulk_upload_items(
         db.flush()
 
         payload = await image.read()
+        payload, ext = _normalize_upload_payload(payload, ext)
         try:
             image_ref = upload_image(row.id, payload, ext)
         except RuntimeError as exc:
