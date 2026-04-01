@@ -102,8 +102,14 @@ export const api = {
     itemId: number,
     payload: Partial<{
       name: string;
+      category: WardrobeCategory;
+      color_families: ColorFamily[];
+      formality: DresscodeLevel;
+      season_tags: string[];
+      weather_tags: string[];
       is_available: boolean;
       status: LaundryStatus;
+      style_tags: string[];
     }>,
   ) =>
     request<WardrobeItem>(`/wardrobe/items/${itemId}`, {

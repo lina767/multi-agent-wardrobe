@@ -23,12 +23,24 @@ export function SettingsPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setEmailError("Please enter a valid email.");
+      setEmailStatus(null);
+      return;
+    }
+    if (normalizedEmail === (user?.email ?? "").toLowerCase()) {
+      setEmailStatus("This is already your current email.");
+      setEmailError(null);
+      return;
+    }
     setSavingEmail(true);
     setEmailStatus(null);
     setEmailError(null);
     try {
-      await updateEmail(email.trim());
-      setEmailStatus("Confirmation link sent to your new email. Please confirm to complete the update.");
+      const result = await updateEmail(normalizedEmail);
+      const pending = result.pendingEmail ?? normalizedEmail;
+      setEmailStatus(`Confirmation sent to ${pending}. Please confirm the email change to finish updating your login.`);
     } catch (requestError) {
       setEmailError(requestError instanceof Error ? requestError.message : "Unable to update email.");
     } finally {

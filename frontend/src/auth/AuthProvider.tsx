@@ -4,6 +4,11 @@ import type { Session, User } from "@supabase/supabase-js";
 import { setApiAccessToken } from "../api";
 import { getSupabaseClient } from "../lib/supabase";
 
+type EmailUpdateResult = {
+  currentEmail: string | null;
+  pendingEmail: string | null;
+};
+
 type AuthContextValue = {
   user: User | null;
   session: Session | null;
@@ -14,7 +19,7 @@ type AuthContextValue = {
   signInWithPassword: (email: string, password: string) => Promise<void>;
   signUpWithPassword: (email: string, password: string) => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
-  updateEmail: (email: string) => Promise<void>;
+  updateEmail: (email: string) => Promise<EmailUpdateResult>;
   updatePassword: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -135,10 +140,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (error) {
           throw new Error(error instanceof Error ? error.message : "Supabase auth is not configured.");
         }
-        const { error } = await supabase.auth.updateUser({ email });
+        const { data, error } = await supabase.auth.updateUser(
+          { email },
+          {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
+        );
         if (error) {
           throw error;
         }
+        return {
+          currentEmail: data.user?.email ?? null,
+          pendingEmail: (data.user as User & { new_email?: string | null })?.new_email ?? null,
+        };
       },
       updatePassword: async (password: string) => {
         let supabase;

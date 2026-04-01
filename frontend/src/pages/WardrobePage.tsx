@@ -29,6 +29,17 @@ function splitTags(value: string): string[] {
     .filter(Boolean);
 }
 
+type ItemEditDraft = {
+  name: string;
+  category: WardrobeCategory;
+  formality: DresscodeLevel;
+  color_family: ColorFamily;
+  season_tags_text: string;
+  weather_tags_text: string;
+  status: LaundryStatus;
+  style_tags_text: string;
+};
+
 export function WardrobePage() {
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [form, setForm] = useState<WardrobeItemCreate>(initialForm);
@@ -41,6 +52,8 @@ export function WardrobePage() {
   const [uploadingBulk, setUploadingBulk] = useState(false);
   const [uploadingSinglePhoto, setUploadingSinglePhoto] = useState(false);
   const [bulkResult, setBulkResult] = useState<string | null>(null);
+  const [editingItemId, setEditingItemId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<ItemEditDraft | null>(null);
   const [filters, setFilters] = useState({
     category: "" as WardrobeCategory | "",
     color_family: "" as ColorFamily | "",
@@ -81,6 +94,57 @@ export function WardrobePage() {
       await refreshItems();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to update item status.");
+    } finally {
+      setBusyItemIds((prev) => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+    }
+  }
+
+  function startEdit(item: WardrobeItem) {
+    setEditingItemId(item.id);
+    setEditDraft({
+      name: item.name,
+      category: item.category,
+      formality: item.formality,
+      color_family: item.color_families[0] ?? "neutral",
+      season_tags_text: item.season_tags.join(", "),
+      weather_tags_text: item.weather_tags.join(", "),
+      status: item.status,
+      style_tags_text: item.style_tags.join(", "),
+    });
+  }
+
+  function cancelEdit() {
+    setEditingItemId(null);
+    setEditDraft(null);
+  }
+
+  async function handleSaveItemDetails(itemId: number) {
+    if (!editDraft) {
+      return;
+    }
+    setBusyItemIds((prev) => new Set(prev).add(itemId));
+    setError(null);
+    try {
+      const statusValue = editDraft.status;
+      await api.updateItem(itemId, {
+        name: editDraft.name.trim(),
+        category: editDraft.category,
+        formality: editDraft.formality,
+        color_families: [editDraft.color_family],
+        season_tags: splitTags(editDraft.season_tags_text),
+        weather_tags: splitTags(editDraft.weather_tags_text),
+        status: statusValue,
+        style_tags: splitTags(editDraft.style_tags_text),
+        is_available: statusValue === "clean",
+      });
+      cancelEdit();
+      await refreshItems();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to save item details.");
     } finally {
       setBusyItemIds((prev) => {
         const next = new Set(prev);
@@ -382,29 +446,153 @@ export function WardrobePage() {
                 )}
               </div>
               <div className="wardrobeItemBody">
-                <h3>{item.name}</h3>
-                <p>
-                  {item.category} · {item.formality}
-                </p>
-                <p>Color: {item.color_families.join(", ")}</p>
-                <p>Weather: {item.weather_tags.join(", ") || "none"}</p>
-                <p>Laundry: {item.status}</p>
+                {editingItemId === item.id && editDraft ? (
+                  <>
+                    <label className="field">
+                      Name
+                      <input
+                        value={editDraft.name}
+                        onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
+                      />
+                    </label>
+                    <label className="field inline">
+                      Category
+                      <select
+                        value={editDraft.category}
+                        onChange={(event) =>
+                          setEditDraft((prev) => (prev ? { ...prev, category: event.target.value as WardrobeCategory } : prev))
+                        }
+                      >
+                        {categories.map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field inline">
+                      Formality
+                      <select
+                        value={editDraft.formality}
+                        onChange={(event) =>
+                          setEditDraft((prev) => (prev ? { ...prev, formality: event.target.value as DresscodeLevel } : prev))
+                        }
+                      >
+                        {dresscodes.map((dresscode) => (
+                          <option key={dresscode} value={dresscode}>
+                            {dresscode}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field inline">
+                      Color
+                      <select
+                        value={editDraft.color_family}
+                        onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, color_family: event.target.value as ColorFamily } : prev))}
+                      >
+                        {colors.map((color) => (
+                          <option key={color} value={color}>
+                            {color}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field">
+                      Season tags
+                      <input
+                        placeholder="spring, autumn"
+                        value={editDraft.season_tags_text}
+                        onChange={(event) =>
+                          setEditDraft((prev) => (prev ? { ...prev, season_tags_text: event.target.value } : prev))
+                        }
+                      />
+                    </label>
+                    <label className="field">
+                      Weather tags
+                      <input
+                        placeholder="cold, rain"
+                        value={editDraft.weather_tags_text}
+                        onChange={(event) =>
+                          setEditDraft((prev) => (prev ? { ...prev, weather_tags_text: event.target.value } : prev))
+                        }
+                      />
+                    </label>
+                    <label className="field">
+                      Style tags
+                      <input
+                        placeholder="classic, minimal"
+                        value={editDraft.style_tags_text}
+                        onChange={(event) =>
+                          setEditDraft((prev) => (prev ? { ...prev, style_tags_text: event.target.value } : prev))
+                        }
+                      />
+                    </label>
+                    <label className="field inline">
+                      Laundry
+                      <select
+                        value={editDraft.status}
+                        onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, status: event.target.value as LaundryStatus } : prev))}
+                      >
+                        {laundryStatuses.map((status) => (
+                          <option key={status} value={status}>
+                            {status}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </>
+                ) : (
+                  <>
+                    <h3>{item.name}</h3>
+                    <p>
+                      {item.category} · {item.formality}
+                    </p>
+                    <p>Color: {item.color_families.join(", ")}</p>
+                    <p>Weather: {item.weather_tags.join(", ") || "none"}</p>
+                    <p>Laundry: {item.status}</p>
+                  </>
+                )}
               </div>
               <div className="actions wardrobeItemActions">
-                <label className="field inline">
-                  Status
-                  <select
-                    value={item.status}
-                    disabled={busyItemIds.has(item.id)}
-                    onChange={(event) => void handleStatusUpdate(item.id, event.target.value as LaundryStatus)}
-                  >
-                    {laundryStatuses.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {editingItemId === item.id ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveItemDetails(item.id)}
+                      disabled={busyItemIds.has(item.id) || !editDraft?.name.trim()}
+                    >
+                      Save changes
+                    </button>
+                    <button type="button" onClick={cancelEdit} disabled={busyItemIds.has(item.id)}>
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <label className="field inline">
+                      Status
+                      <select
+                        value={item.status}
+                        disabled={busyItemIds.has(item.id)}
+                        onChange={(event) => void handleStatusUpdate(item.id, event.target.value as LaundryStatus)}
+                      >
+                        {laundryStatuses.map((status) => (
+                          <option key={status} value={status}>
+                            {status}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => startEdit(item)}
+                      disabled={busyItemIds.has(item.id) || (editingItemId !== null && editingItemId !== item.id)}
+                    >
+                      Edit details
+                    </button>
+                  </>
+                )}
                 <label className="uploadButton">
                   Upload image
                   <input type="file" accept="image/*" onChange={(event) => void handleUpload(item.id, event.target.files?.[0] ?? null)} />
