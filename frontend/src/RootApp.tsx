@@ -30,12 +30,20 @@ function GuestRoute() {
 
 function DashboardLayout() {
   const { user, signOut } = useAuth();
+  const rawName =
+    (user?.user_metadata?.given_name as string | undefined) ??
+    (user?.user_metadata?.name as string | undefined) ??
+    (user?.user_metadata?.full_name as string | undefined);
+  const firstNameFromProfile = rawName?.trim().split(/\s+/)[0];
+  const firstNameFromEmail = user?.email?.split("@")[0]?.split(/[._-]/)[0];
+  const firstName = firstNameFromProfile || firstNameFromEmail || "there";
+
   return (
     <>
       <header className="topbar">
         <div>
           <strong>Dashboard</strong>
-          <p>{user?.email ?? "Signed in"}</p>
+          <p>Hello, {firstName}</p>
         </div>
         <button
           type="button"

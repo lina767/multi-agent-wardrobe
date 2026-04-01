@@ -16,6 +16,7 @@ export function App() {
   const [hasDailySuggestion, setHasDailySuggestion] = useState(false);
   const [guideLoading, setGuideLoading] = useState(true);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveNoticeVisible, setSaveNoticeVisible] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -69,14 +70,19 @@ export function App() {
     const saveForm = document.querySelector<HTMLFormElement>('form[data-dashboard-save="true"]');
     if (!saveForm) {
       setSaveMessage("Nothing to save on this page.");
+      setSaveNoticeVisible(true);
+      window.setTimeout(() => setSaveNoticeVisible(false), 1200);
       return;
     }
     saveForm.requestSubmit();
     setSaveMessage("Saving current section...");
+    setSaveNoticeVisible(true);
+    window.setTimeout(() => setSaveNoticeVisible(false), 1200);
   }
 
   useEffect(() => {
     setSaveMessage(null);
+    setSaveNoticeVisible(false);
   }, [location.pathname]);
 
   return (
@@ -125,7 +131,7 @@ export function App() {
           Save changes
         </button>
       </div>
-      {saveMessage ? <p className="metaNote">{saveMessage}</p> : null}
+      {saveMessage && saveNoticeVisible ? <p className="metaNote">{saveMessage}</p> : null}
       <Routes>
         <Route path="profile" element={<ProfilePage />} />
         <Route path="wardrobe" element={<WardrobePage />} />
