@@ -1,10 +1,9 @@
 import { FormEvent, useEffect, useState } from "react";
 
-import { api } from "../api";
 import { useAuth } from "../auth/AuthProvider";
 
 export function SettingsPage() {
-  const { user, updatePassword } = useAuth();
+  const { user, updateEmail, updatePassword } = useAuth();
   const [email, setEmail] = useState("");
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -28,8 +27,8 @@ export function SettingsPage() {
     setEmailStatus(null);
     setEmailError(null);
     try {
-      const result = await api.updateEmail(email.trim());
-      setEmailStatus(`Email updated to ${result.email ?? "unknown"}`);
+      await updateEmail(email.trim());
+      setEmailStatus("Confirmation link sent to your new email. Please confirm to complete the update.");
     } catch (requestError) {
       setEmailError(requestError instanceof Error ? requestError.message : "Unable to update email.");
     } finally {

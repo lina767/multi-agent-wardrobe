@@ -14,6 +14,7 @@ type AuthContextValue = {
   signInWithPassword: (email: string, password: string) => Promise<void>;
   signUpWithPassword: (email: string, password: string) => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
+  updateEmail: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -123,6 +124,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         const redirectTo = `${window.location.origin}/auth/callback`;
         const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+        if (error) {
+          throw error;
+        }
+      },
+      updateEmail: async (email: string) => {
+        let supabase;
+        try {
+          supabase = getSupabaseClient();
+        } catch (error) {
+          throw new Error(error instanceof Error ? error.message : "Supabase auth is not configured.");
+        }
+        const { error } = await supabase.auth.updateUser({ email });
         if (error) {
           throw error;
         }
