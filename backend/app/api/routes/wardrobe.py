@@ -60,6 +60,19 @@ def _normalize_upload_payload(payload: bytes, extension: str) -> tuple[bytes, st
     ext = extension.lower().lstrip(".")
     if ext not in {"heic", "heif"}:
         return payload, ext
+    if Image is None or register_heif_opener is None:
+        # Accept HEIC as-is when conversion libs are unavailable.
+        return payload, ext
+    try:
+        register_heif_opener()
+        with Image.open(BytesIO(payload)) as image:
+            rgb = image.convert("RGB")
+            out = BytesIO()
+            rgb.save(out, format="JPEG", quality=92)
+        return out.getvalue(), "jpg"
+    except Exception:
+        # Keep upload path resilient; fallback to original bytes/ext.
+        return payload, ext
 
 
 def _material_insights(material: str | None) -> dict[str, str] | None:
@@ -76,19 +89,6 @@ def _parse_material(material: str | None) -> MaterialType | None:
         return MaterialType(value)
     except ValueError:
         return None
-    if Image is None or register_heif_opener is None:
-        # Accept HEIC as-is when conversion libs are unavailable.
-        return payload, ext
-    try:
-        register_heif_opener()
-        with Image.open(BytesIO(payload)) as image:
-            rgb = image.convert("RGB")
-            out = BytesIO()
-            rgb.save(out, format="JPEG", quality=92)
-        return out.getvalue(), "jpg"
-    except Exception:
-        # Keep upload path resilient; fallback to original bytes/ext.
-        return payload, ext
 
 
 @router.get("/items", response_model=list[WardrobeItemRead])

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 
-import { api } from "../api";
+import { api, resolveApiAssetUrl } from "../api";
 import type { UserProfile } from "../types";
 
 export function ProfilePage() {
@@ -133,7 +133,9 @@ export function ProfilePage() {
           <input type="file" accept="image/*" onChange={(event) => void handleAnalyze(event.target.files?.[0] ?? null)} />
         </label>
       </div>
-      {profile?.selfie_url ? <img src={profile.selfie_url} alt="Selfie" className="profileSelfie" /> : null}
+      {profile?.selfie_url ? (
+        <img src={resolveApiAssetUrl(profile.selfie_url) ?? profile.selfie_url} alt="Selfie" className="profileSelfie" />
+      ) : null}
       {profile?.color_profile ? (
         <p className="metaNote">
           Color signature: {profile.color_profile.season} / {profile.color_profile.undertone} / {profile.color_profile.contrast_level}

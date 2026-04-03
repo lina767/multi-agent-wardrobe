@@ -39,12 +39,16 @@ class HuggingFaceVisionService:
     async def predict_tags(self, image_bytes: bytes) -> VisionTags:
         category = await self._top_label(image_bytes, _CATEGORY_CANDIDATES)
         colors = await self._labels_above_threshold(image_bytes, _COLOR_CANDIDATES, threshold=0.2, top_k=2)
+        dominant_colors = _extract_dominant_colors(image_bytes)
+        color_families = _map_color_families(colors)
+        if not color_families:
+            color_families = _infer_color_families_from_dominant(dominant_colors)
         styles = await self._labels_above_threshold(image_bytes, _STYLE_CANDIDATES, threshold=0.23, top_k=3)
         material = await self._top_label(image_bytes, _MATERIAL_CANDIDATES, threshold=0.22)
         return VisionTags(
             category=_map_category(category),
-            color_families=_map_color_families(colors),
-            dominant_colors=_extract_dominant_colors(image_bytes),
+            color_families=color_families,
+            dominant_colors=dominant_colors,
             style_tags=_map_style_tags(styles),
             material=_map_material(material),
         )
@@ -252,3 +256,35 @@ def _extract_dominant_colors(image_bytes: bytes, max_colors: int = 3) -> list[di
             }
         )
     return colors
+
+
+def _infer_color_families_from_dominant(dominant_colors: list[dict[str, Any]]) -> list[str]:
+    scores: dict[str, float] = {
+        ColorFamily.NEUTRAL.value: 0.0,
+        ColorFamily.WARM.value: 0.0,
+        ColorFamily.COOL.value: 0.0,
+        ColorFamily.EARTH.value: 0.0,
+        ColorFamily.PASTEL.value: 0.0,
+    }
+    for color in dominant_colors:
+        proportion = float(color.get("proportion", 0.0) or 0.0)
+        saturation = float(color.get("saturation", 0.0) or 0.0)
+        lightness = float(color.get("lightness", 0.0) or 0.0)
+        hue = float(color.get("hue", 0.0) or 0.0)
+        temp = str(color.get("temperature", "neutral") or "neutral").lower()
+        if saturation < 0.12:
+            scores[ColorFamily.NEUTRAL.value] += proportion
+            continue
+        if saturation < 0.35 and lightness < 0.65:
+            scores[ColorFamily.EARTH.value] += proportion
+        elif lightness > 0.72 and saturation < 0.45:
+            scores[ColorFamily.PASTEL.value] += proportion
+        if temp == "warm" or hue < 70 or hue >= 290:
+            scores[ColorFamily.WARM.value] += proportion
+        elif temp == "cool" or (70 <= hue < 250):
+            scores[ColorFamily.COOL.value] += proportion
+        else:
+            scores[ColorFamily.NEUTRAL.value] += proportion * 0.4
+    ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+    picked = [name for name, score in ranked if score >= 0.2][:2]
+    return picked or [ColorFamily.NEUTRAL.value]

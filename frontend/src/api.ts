@@ -47,6 +47,19 @@ const API_BASE = normalizeApiBase(ENV_API_BASE ?? RUNTIME_API_BASE);
 const API_PREFIX = `${API_BASE}/api/v1`;
 let apiAccessToken: string | null = null;
 
+export function resolveApiAssetUrl(url: string | null | undefined): string | null {
+  if (!url) {
+    return null;
+  }
+  if (/^https?:\/\//i.test(url) || url.startsWith("//")) {
+    return url;
+  }
+  if (url.startsWith("/")) {
+    return API_BASE ? `${API_BASE}${url}` : url;
+  }
+  return API_BASE ? `${API_BASE}/${url}` : url;
+}
+
 export function setApiAccessToken(token: string | null) {
   apiAccessToken = token;
 }

@@ -67,6 +67,12 @@ def _upload_supabase(item_id: int, payload: bytes, ext: str, folder: str) -> str
         "Content-Type": "application/octet-stream",
         "x-upsert": "true",
     }
+    ensured, ensure_detail = _ensure_supabase_bucket()
+    if not ensured:
+        raise RuntimeError(
+            "Supabase bucket bootstrap failed "
+            f"(bucket='{settings.supabase_bucket}', base='{base}'): {ensure_detail}"
+        )
     resp = httpx.post(url, headers=headers, content=payload, timeout=20.0)
     if resp.status_code == 404 and "Bucket not found" in resp.text:
         created, create_detail = _ensure_supabase_bucket()
@@ -108,16 +114,41 @@ def _ensure_supabase_bucket() -> tuple[bool, str]:
         "Authorization": f"Bearer {settings.supabase_service_key}",
         "Content-Type": "application/json",
     }
-    # Idempotent create. If it already exists, Supabase returns 409.
-    payload = {
-        "id": settings.supabase_bucket,
-        "name": settings.supabase_bucket,
+    bucket = settings.supabase_bucket
+    try:
+        existing = httpx.get(f"{base}/storage/v1/bucket/{bucket}", headers=headers, timeout=10.0)
+    except httpx.HTTPError:
+        return False, "network error while checking bucket"
+
+    if existing.status_code == 200:
+        try:
+            body = existing.json()
+        except ValueError:
+            body = {}
+        is_public = bool((body or {}).get("public"))
+        if is_public:
+            return True, "ok"
+        payload = {"id": bucket, "name": bucket, "public": True}
+        try:
+            update = httpx.put(f"{base}/storage/v1/bucket/{bucket}", headers=headers, json=payload, timeout=10.0)
+        except httpx.HTTPError:
+            return False, "network error while updating bucket visibility"
+        if update.status_code in {200, 204}:
+            return True, "ok"
+        return False, f"set bucket public failed ({update.status_code}): {update.text}"
+
+    if existing.status_code not in {400, 404}:
+        return False, f"check bucket failed ({existing.status_code}): {existing.text}"
+
+    create_payload = {
+        "id": bucket,
+        "name": bucket,
         "public": True,
     }
     try:
-        resp = httpx.post(f"{base}/storage/v1/bucket", headers=headers, json=payload, timeout=10.0)
+        created = httpx.post(f"{base}/storage/v1/bucket", headers=headers, json=create_payload, timeout=10.0)
     except httpx.HTTPError:
         return False, "network error while creating bucket"
-    if resp.status_code in {200, 201, 409}:
+    if created.status_code in {200, 201, 409}:
         return True, "ok"
-    return False, f"create bucket failed ({resp.status_code}): {resp.text}"
+    return False, f"create bucket failed ({created.status_code}): {created.text}"

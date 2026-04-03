@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-import { api } from "../api";
+import { api, resolveApiAssetUrl } from "../api";
 import type {
   ColorFamily,
   DresscodeLevel,
@@ -560,7 +560,7 @@ export function WardrobePage() {
             <article className="item wardrobeItem" key={item.id}>
               <div className="thumbWrap">
                 {item.image_url ? (
-                  <img src={item.image_url} alt={item.name} className="thumb" />
+                  <img src={resolveApiAssetUrl(item.image_url) ?? item.image_url} alt={item.name} className="thumb" />
                 ) : (
                   <div className="thumbPlaceholder">No image</div>
                 )}
