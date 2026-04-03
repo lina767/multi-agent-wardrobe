@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -67,3 +68,15 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Deployment hardening:
+# Some platforms accidentally set unprefixed Supabase vars (SUPABASE_URL, etc.).
+# Keep prefixed WARDROBE_* as source of truth, but fall back to common aliases.
+if not settings.supabase_url:
+    settings.supabase_url = os.getenv("SUPABASE_URL")
+if not settings.supabase_jwt_secret:
+    settings.supabase_jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
+if not settings.supabase_anon_key:
+    settings.supabase_anon_key = os.getenv("SUPABASE_ANON_KEY")
+if not settings.supabase_service_key:
+    settings.supabase_service_key = os.getenv("SUPABASE_SERVICE_KEY")
