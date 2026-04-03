@@ -5,7 +5,11 @@ from sqlalchemy.orm import Session
 _INVENTORY_COLUMNS: dict[str, str] = {
     "brand": "TEXT",
     "size_label": "TEXT",
+    "fit_type": "TEXT DEFAULT 'regular'",
     "material": "TEXT",
+    "wear_frequency": "TEXT DEFAULT 'sometimes'",
+    "last_worn_at": "DATETIME",
+    "condition": "TEXT DEFAULT 'good'",
     "quantity": "INTEGER DEFAULT 1",
     "purchase_price": "REAL",
     "notes": "TEXT",
@@ -46,6 +50,9 @@ def ensure_inventory_schema(db: Session) -> None:
         db.execute(text(f"ALTER TABLE wardrobe_items ADD COLUMN {col} {sql_type}"))
     db.execute(text("UPDATE wardrobe_items SET status = 'clean' WHERE status IS NULL OR status = ''"))
     db.execute(text("UPDATE wardrobe_items SET vision_status = 'pending' WHERE vision_status IS NULL OR vision_status = ''"))
+    db.execute(text("UPDATE wardrobe_items SET fit_type = 'regular' WHERE fit_type IS NULL OR fit_type = ''"))
+    db.execute(text("UPDATE wardrobe_items SET wear_frequency = 'sometimes' WHERE wear_frequency IS NULL OR wear_frequency = ''"))
+    db.execute(text("UPDATE wardrobe_items SET condition = 'good' WHERE condition IS NULL OR condition = ''"))
     db.commit()
 
 

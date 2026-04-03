@@ -35,6 +35,8 @@ def create_feedback(
             "item_ids": body.suggestion_item_ids,
             "rating": body.rating,
             "comment": body.comment,
+            "reason_tags": body.reason_tags,
+            "occasion": body.occasion,
         },
     )
     db.commit()

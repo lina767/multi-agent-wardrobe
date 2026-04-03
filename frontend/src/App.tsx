@@ -4,6 +4,7 @@ import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "reac
 import { api } from "./api";
 import { DailyOutfitPage } from "./pages/DailyOutfitPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
+import { PackingAssistantPage } from "./pages/PackingAssistantPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { WardrobePage } from "./pages/WardrobePage";
@@ -114,17 +115,20 @@ export function App() {
           <NavLink to="/dashboard/profile" className="dashLink">
             1. Identity
           </NavLink>
+          <NavLink to="/dashboard/daily" className="dashLink">
+            2. Dress Me
+          </NavLink>
           <NavLink to="/dashboard/wardrobe" className="dashLink">
-            2. Wardrobe
+            3. Wardrobe
           </NavLink>
           <NavLink to="/dashboard/onboarding" className="dashLink">
-            3. Style Onboarding
+            4. Style Onboarding
           </NavLink>
-          <NavLink to="/dashboard/daily" className="dashLink">
-            4. Daily Edit
+          <NavLink to="/dashboard/packing" className="dashLink">
+            5. Packing
           </NavLink>
           <NavLink to="/dashboard/settings" className="dashLink">
-            5. Studio Settings
+            6. Studio Settings
           </NavLink>
         </nav>
         <button type="button" className="dashSaveButton" onClick={handleDashboardSave}>
@@ -146,8 +150,9 @@ export function App() {
             />
           }
         />
+        <Route path="packing" element={<PackingAssistantPage />} />
         <Route path="settings" element={<SettingsPage />} />
-        <Route path="*" element={<Navigate to="/dashboard/profile" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard/daily" replace />} />
       </Routes>
     </main>
   );

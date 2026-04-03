@@ -5,6 +5,9 @@
     },
     "huggingface-skills": {
       "enabled": true
+    },
+    "supabase": {
+      "enabled": true
     }
   }
 }

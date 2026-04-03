@@ -1,5 +1,6 @@
 import csv
 import sys
+from datetime import datetime
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -32,6 +33,12 @@ def to_int(value: str, default: int = 1) -> int:
     return int(value)
 
 
+def to_datetime(value: str):
+    if value is None or value == "":
+        return None
+    return datetime.fromisoformat(value)
+
+
 def main(csv_path: str = "data/inventory_sample.csv") -> None:
     init_db()
     db = SessionLocal()
@@ -57,7 +64,11 @@ def main(csv_path: str = "data/inventory_sample.csv") -> None:
                     style_tags_json=parse_list(row.get("style_tags", "")),
                     brand=row.get("brand") or None,
                     size_label=row.get("size_label") or None,
+                    fit_type=row.get("fit_type", "regular") or "regular",
                     material=row.get("material") or None,
+                    wear_frequency=row.get("wear_frequency", "sometimes") or "sometimes",
+                    last_worn_at=to_datetime(row.get("last_worn_at", "")),
+                    condition=row.get("condition", "good") or "good",
                     quantity=to_int(row.get("quantity", "1"), 1),
                     purchase_price=to_float(row.get("purchase_price", "")),
                     notes=row.get("notes") or None,

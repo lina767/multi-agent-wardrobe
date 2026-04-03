@@ -1,5 +1,5 @@
-name,category,color_families,formality,season_tags,is_available,status,style_tags,brand,size_label,material,quantity,purchase_price,notes
-White Shirt,top,"neutral,cool",business,"spring,summer",true,clean,"classic,minimalist",COS,M,Cotton,1,59.90,Office staple
-Black Trousers,bottom,"neutral",business,"all",true,clean,"classic",Uniqlo,32,Wool blend,1,79.00,
-Leather Loafers,shoes,"neutral",smart_casual,"spring,autumn",true,clean,"classic,minimalist",G.H.Bass,43,Leather,1,149.00,
-Navy Blazer,outer,"cool,neutral",business,"autumn,winter",true,clean,"classic",Massimo Dutti,50,Wool,1,199.00,Meeting days
+name,category,color_families,formality,season_tags,is_available,status,style_tags,brand,size_label,fit_type,material,wear_frequency,last_worn_at,condition,quantity,purchase_price,notes
+White Shirt,top,"neutral,cool",business,"spring,summer",true,clean,"classic,minimalist",COS,M,regular,cotton,often,2026-03-29,good,1,59.90,Office staple
+Black Trousers,bottom,"neutral",business,"all",true,clean,"classic",Uniqlo,32,slim,wool,sometimes,2026-03-21,good,1,79.00,
+Leather Loafers,shoes,"neutral",smart_casual,"spring,autumn",true,clean,"classic,minimalist",G.H.Bass,43,regular,synthetic,rarely,2026-02-18,worn,1,149.00,
+Navy Blazer,outer,"cool,neutral",business,"autumn,winter",true,clean,"classic",Massimo Dutti,50,oversized,wool,often,2026-03-27,good,1,199.00,Meeting days

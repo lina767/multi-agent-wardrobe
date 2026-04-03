@@ -10,7 +10,14 @@ export function getSupabaseClient() {
     throw new Error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
   }
   if (!cachedClient) {
-    cachedClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    cachedClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        flowType: "pkce",
+        detectSessionInUrl: true,
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    });
   }
   return cachedClient;
 }

@@ -2,6 +2,16 @@ export type WardrobeCategory = "top" | "bottom" | "outer" | "shoes" | "accessory
 export type DresscodeLevel = "casual" | "smart_casual" | "business" | "formal";
 export type ColorFamily = "neutral" | "warm" | "cool" | "bold" | "earth" | "pastel";
 export type LaundryStatus = "clean" | "dirty" | "dry_cleaning";
+export type FitType = "oversized" | "regular" | "slim" | "cropped";
+export type MaterialType = "cotton" | "silk" | "wool" | "synthetic" | "linen";
+export type WearFrequency = "rarely" | "sometimes" | "often" | "very_often";
+export type ItemCondition = "new" | "good" | "worn" | "needs_repair";
+
+export interface MaterialInsights {
+  care: string;
+  weather: string;
+  texture_match: string;
+}
 
 export interface WardrobeItem {
   id: number;
@@ -17,7 +27,12 @@ export interface WardrobeItem {
   style_tags: string[];
   brand?: string | null;
   size_label?: string | null;
-  material?: string | null;
+  fit_type: FitType;
+  material?: MaterialType | null;
+  wear_frequency: WearFrequency;
+  last_worn_at?: string | null;
+  condition: ItemCondition;
+  material_insights?: MaterialInsights | null;
   quantity: number;
   purchase_price?: number | null;
   notes?: string | null;
@@ -36,7 +51,11 @@ export interface WardrobeItemCreate {
   style_tags: string[];
   brand?: string;
   size_label?: string;
-  material?: string;
+  fit_type: FitType;
+  material?: MaterialType;
+  wear_frequency: WearFrequency;
+  last_worn_at?: string;
+  condition: ItemCondition;
   quantity: number;
   purchase_price?: number;
   notes?: string;
@@ -49,8 +68,19 @@ export interface BulkUploadResponse {
     wardrobe_graph?: { nodes: Array<{ item_id: number; category: string }>; edges: Array<{ left: number; right: number; compatibility: number }> };
     outfit_potential?: number;
     capsule_suggestions?: Array<{ formula: string; status: Record<string, number> }>;
-    gap_analysis?: Array<{ suggestion: string; estimated_new_outfits: number; reason: string }>;
+    gap_analysis?: GapAnalysisEntry[];
   } | null;
+}
+
+export interface GapAnalysisEntry {
+  suggestion: string;
+  target_item_archetype?: string;
+  suggested_color?: string;
+  upgrade_count?: number;
+  estimated_new_outfits: number;
+  impacted_item_ids?: number[];
+  confidence?: number;
+  reason: string;
 }
 
 export interface Suggestion {
@@ -108,10 +138,78 @@ export interface SuggestionsResponse {
   };
 }
 
+export interface SuggestionFeedbackPayload {
+  accepted?: boolean;
+  rating?: number;
+  occasion?: string;
+  thumb?: "up" | "down";
+  reason_tags?: string[];
+  context?: Record<string, unknown>;
+}
+
+export interface QuickSuggestionsResponse {
+  context: {
+    occasion?: string;
+    mood?: string;
+    weather?: {
+      temperature_c?: number;
+      condition?: string;
+      rain_probability?: number;
+      uv_index?: number;
+      forecast_summary?: string;
+    };
+  };
+  suggestions: Array<{
+    item_ids: number[];
+    item_names: string[];
+    total_score: number;
+    explanation: string;
+  }>;
+  scientific_note: string;
+}
+
+export interface ProactiveSuggestionsResponse {
+  generated_at: string;
+  entries: Array<{
+    event: {
+      title: string;
+      starts_at: string;
+      location?: string | null;
+      event_type: string;
+      source: string;
+    };
+    suggestions: Array<{
+      item_ids: number[];
+      item_names: string[];
+      total_score: number;
+      explanation: string;
+    }>;
+  }>;
+}
+
+export interface PackingAssistantResponse {
+  summary: {
+    duration_days: number;
+    planned_occasions: string[];
+    coverage_ratio: number;
+    selected_item_count: number;
+    laundry_frequency_days: number;
+  };
+  packing_item_ids: number[];
+  packing_item_names: string[];
+  outfit_plan: Array<{
+    day: number;
+    occasion: string;
+    item_ids: number[];
+    item_names: string[];
+    score: number;
+  }>;
+}
+
 export interface WardrobeAnalyticsResponse {
   outfit_potential?: number;
   capsule_suggestions?: Array<{ formula: string; status: Record<string, number> }>;
-  gap_analysis?: Array<{ suggestion: string; estimated_new_outfits: number; reason: string }>;
+  gap_analysis?: GapAnalysisEntry[];
 }
 
 export interface ProfileCheckinCreate {

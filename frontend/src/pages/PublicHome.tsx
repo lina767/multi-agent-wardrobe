@@ -19,11 +19,11 @@ export function PublicHome() {
 
       <main className="layout landingLayout">
         <section className="hero heroLanding landingHero">
-          <p className="eyebrow">Fashion Intelligence Platform</p>
-          <h1>Your digital wardrobe with personalized outfit intelligence</h1>
+          <p className="eyebrow">Dress Me In Seconds</p>
+          <h1>Open the app, pick your occasion, get 2-3 outfits instantly</h1>
           <p>
-            Multi-Agent Wardrobe combines profile data, weather, occasion, and your wardrobe in one platform. Get explainable daily outfit recommendations,
-            manage your closet with structure, and improve your style with data-backed feedback loops.
+            Multi-Agent Wardrobe puts daily recommendations first: choose an occasion, let weather sync automatically, and receive fast outfit options. Your
+            thumbs up/down feedback continuously improves the next suggestions.
           </p>
           <div className="row">
             <Link className="linkButton" to="/signup">
@@ -35,16 +35,16 @@ export function PublicHome() {
           </div>
           <div className="landingStatGrid">
             <article className="landingStat">
-              <p className="landingStatValue">Top-3</p>
-              <p>Outfit recommendations per request, each with scoring and rationale</p>
+              <p className="landingStatValue">&lt;20s</p>
+              <p>From occasion to wearable outfits in a fast daily flow</p>
             </article>
             <article className="landingStat">
-              <p className="landingStatValue">360°</p>
-              <p>Coverage across profile, wardrobe, feedback, and daily context</p>
+              <p className="landingStatValue">Feedback loop</p>
+              <p>Thumbs up/down trains the ranking to match your real preferences</p>
             </article>
             <article className="landingStat">
-              <p className="landingStatValue">Live</p>
-              <p>Weather-aware recommendations with transparent signal and score breakdowns</p>
+              <p className="landingStatValue">Proactive</p>
+              <p>Calendar-aware suggestions and travel packing capsules</p>
             </article>
           </div>
         </section>

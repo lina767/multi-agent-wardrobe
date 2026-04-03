@@ -2,13 +2,21 @@ import type {
   BulkUploadResponse,
   ColorFamily,
   DresscodeLevel,
+  FitType,
+  ItemCondition,
   LaundryStatus,
+  MaterialType,
   OnboardingResponse,
+  PackingAssistantResponse,
   ProfileCheckinCreate,
   ProfileCheckinRead,
+  ProactiveSuggestionsResponse,
+  QuickSuggestionsResponse,
+  SuggestionFeedbackPayload,
   SuggestionsResponse,
   TemporalState,
   UserProfile,
+  WearFrequency,
   WardrobeCategory,
   WardrobeAnalyticsResponse,
   WardrobeItem,
@@ -64,6 +72,9 @@ export const api = {
     color_family?: ColorFamily | "";
     weather_tag?: string;
     status?: LaundryStatus | "";
+    condition?: ItemCondition | "";
+    wear_frequency?: WearFrequency | "";
+    fit_type?: FitType | "";
     sort_by?: "id" | "name";
     sort_dir?: "asc" | "desc";
   }) => {
@@ -79,6 +90,15 @@ export const api = {
     }
     if (filters.status) {
       query.set("status", filters.status);
+    }
+    if (filters.condition) {
+      query.set("condition", filters.condition);
+    }
+    if (filters.wear_frequency) {
+      query.set("wear_frequency", filters.wear_frequency);
+    }
+    if (filters.fit_type) {
+      query.set("fit_type", filters.fit_type);
     }
     if (filters.sort_by) {
       query.set("sort_by", filters.sort_by);
@@ -110,6 +130,12 @@ export const api = {
       is_available: boolean;
       status: LaundryStatus;
       style_tags: string[];
+      size_label: string;
+      fit_type: FitType;
+      material: MaterialType;
+      wear_frequency: WearFrequency;
+      last_worn_at: string;
+      condition: ItemCondition;
     }>,
   ) =>
     request<WardrobeItem>(`/wardrobe/items/${itemId}`, {
@@ -155,8 +181,27 @@ export const api = {
       return `/suggestions?${query.toString()}`;
       })(),
     ),
-  sendSuggestionFeedback: (suggestionId: number, payload: { accepted?: boolean; rating?: number; occasion?: string }) =>
+  sendSuggestionFeedback: (suggestionId: number, payload: SuggestionFeedbackPayload) =>
     request<{ status: string }>(`/suggestions/${suggestionId}/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  getQuickSuggestions: (occasion: string, location?: string, mood = "focus") =>
+    request<QuickSuggestionsResponse>("/recommendations/quick", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ occasion, location, mood, limit: 3 }),
+    }),
+  getProactiveSuggestions: () => request<ProactiveSuggestionsResponse>("/suggestions/proactive"),
+  getPackingPlan: (payload: {
+    duration_days: number;
+    location?: string;
+    planned_occasions: string[];
+    laundry_frequency_days?: number;
+    max_items?: number;
+  }) =>
+    request<PackingAssistantResponse>("/suggestions/packing-plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

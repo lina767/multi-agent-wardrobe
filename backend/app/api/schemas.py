@@ -9,8 +9,12 @@ from app.domain.enums import (
     ColorFamily,
     DresscodeLevel,
     EventType,
+    FitType,
+    ItemCondition,
     ItemStatus,
+    MaterialType,
     MoodEnergy,
+    WearFrequency,
     WardrobeCategory,
 )
 
@@ -40,7 +44,11 @@ class WardrobeItemBase(BaseModel):
     style_tags: list[str] = Field(default_factory=list, description="minimalist, classic, etc.")
     brand: str | None = None
     size_label: str | None = None
-    material: str | None = None
+    fit_type: FitType = FitType.REGULAR
+    material: MaterialType | None = None
+    wear_frequency: WearFrequency = WearFrequency.SOMETIMES
+    last_worn_at: datetime | None = None
+    condition: ItemCondition = ItemCondition.GOOD
     quantity: int = Field(1, ge=1)
     purchase_price: float | None = Field(None, ge=0)
     notes: str | None = None
@@ -63,7 +71,11 @@ class WardrobeItemUpdate(BaseModel):
     style_tags: list[str] | None = None
     brand: str | None = None
     size_label: str | None = None
-    material: str | None = None
+    fit_type: FitType | None = None
+    material: MaterialType | None = None
+    wear_frequency: WearFrequency | None = None
+    last_worn_at: datetime | None = None
+    condition: ItemCondition | None = None
     quantity: int | None = Field(None, ge=1)
     purchase_price: float | None = Field(None, ge=0)
     notes: str | None = None
@@ -78,6 +90,7 @@ class WardrobeItemRead(WardrobeItemBase):
     processed_image_url: str | None = None
     vision_status: str = "pending"
     vision_error: str | None = None
+    material_insights: dict[str, str] | None = None
 
 
 # --- Context & recommendation request ---
@@ -153,6 +166,17 @@ class RecommendationResponse(BaseModel):
     context_echo: ContextInput
 
 
+class GapAnalysisInsight(BaseModel):
+    suggestion: str
+    target_item_archetype: str | None = None
+    suggested_color: str | None = None
+    upgrade_count: int = 0
+    estimated_new_outfits: int = 0
+    impacted_item_ids: list[int] = Field(default_factory=list)
+    confidence: float = Field(0.0, ge=0.0, le=1.0)
+    reason: str
+
+
 # --- Feedback ---
 
 
@@ -160,6 +184,17 @@ class FeedbackCreate(BaseModel):
     suggestion_item_ids: list[int]
     rating: int = Field(..., ge=1, le=5)
     comment: str | None = None
+    reason_tags: list[str] = Field(default_factory=list, max_length=8)
+    occasion: str | None = None
+
+
+class SuggestionFeedbackUpdate(BaseModel):
+    accepted: bool | None = None
+    rating: int | None = Field(default=None, ge=1, le=5)
+    occasion: str | None = None
+    thumb: str | None = Field(default=None, pattern="^(up|down)$")
+    reason_tags: list[str] = Field(default_factory=list, max_length=8)
+    context: dict[str, Any] | None = None
 
 
 class FeedbackRead(BaseModel):
@@ -300,3 +335,49 @@ class OnboardingResponse(BaseModel):
     profile: ProfileRead
     temporal_state: TemporalStateRead
     suggestions: list[dict[str, Any]]
+
+
+class QuickRecommendationRequest(BaseModel):
+    occasion: str = Field(default="casual", min_length=3, max_length=40)
+    location: str | None = None
+    mood: MoodEnergy = MoodEnergy.FOCUS
+    limit: int = Field(default=3, ge=1, le=3)
+
+
+class QuickRecommendationResponse(BaseModel):
+    context: dict[str, Any]
+    suggestions: list[dict[str, Any]]
+    scientific_note: str
+
+
+class CalendarEventRead(BaseModel):
+    title: str
+    starts_at: datetime
+    location: str | None = None
+    event_type: str = "other"
+    source: str = "calendar"
+
+
+class ProactiveSuggestionRead(BaseModel):
+    event: CalendarEventRead
+    suggestions: list[dict[str, Any]]
+
+
+class ProactiveSuggestionsResponse(BaseModel):
+    generated_at: datetime
+    entries: list[ProactiveSuggestionRead]
+
+
+class PackingAssistantRequest(BaseModel):
+    duration_days: int = Field(..., ge=1, le=30)
+    location: str | None = None
+    planned_occasions: list[str] = Field(default_factory=list, max_length=30)
+    laundry_frequency_days: int = Field(default=3, ge=1, le=14)
+    max_items: int = Field(default=12, ge=4, le=40)
+
+
+class PackingAssistantResponse(BaseModel):
+    summary: dict[str, Any]
+    packing_item_ids: list[int]
+    packing_item_names: list[str]
+    outfit_plan: list[dict[str, Any]]

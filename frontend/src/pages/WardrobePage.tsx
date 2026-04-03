@@ -1,13 +1,28 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { api } from "../api";
-import type { ColorFamily, DresscodeLevel, LaundryStatus, WardrobeCategory, WardrobeItem, WardrobeItemCreate } from "../types";
+import type {
+  ColorFamily,
+  DresscodeLevel,
+  FitType,
+  ItemCondition,
+  LaundryStatus,
+  MaterialType,
+  WardrobeCategory,
+  WardrobeItem,
+  WardrobeItemCreate,
+  WearFrequency,
+} from "../types";
 
 const categories: WardrobeCategory[] = ["top", "bottom", "outer", "shoes", "accessory"];
 const dresscodes: DresscodeLevel[] = ["casual", "smart_casual", "business", "formal"];
 const colors: ColorFamily[] = ["neutral", "warm", "cool", "bold", "earth", "pastel"];
 const weatherTags = ["cold", "mild", "hot", "rain", "wind", "snow"];
 const laundryStatuses: LaundryStatus[] = ["clean", "dirty", "dry_cleaning"];
+const fitTypes: FitType[] = ["oversized", "regular", "slim", "cropped"];
+const materialTypes: MaterialType[] = ["cotton", "silk", "wool", "synthetic", "linen"];
+const wearFrequencies: WearFrequency[] = ["rarely", "sometimes", "often", "very_often"];
+const itemConditions: ItemCondition[] = ["new", "good", "worn", "needs_repair"];
 
 const initialForm: WardrobeItemCreate = {
   name: "",
@@ -19,6 +34,11 @@ const initialForm: WardrobeItemCreate = {
   is_available: true,
   status: "clean",
   style_tags: [],
+  size_label: "",
+  fit_type: "regular",
+  material: "cotton",
+  wear_frequency: "sometimes",
+  condition: "good",
   quantity: 1,
 };
 
@@ -38,6 +58,12 @@ type ItemEditDraft = {
   weather_tags_text: string;
   status: LaundryStatus;
   style_tags_text: string;
+  size_label: string;
+  fit_type: FitType;
+  material: MaterialType;
+  wear_frequency: WearFrequency;
+  last_worn_at: string;
+  condition: ItemCondition;
 };
 
 export function WardrobePage() {
@@ -59,6 +85,9 @@ export function WardrobePage() {
     color_family: "" as ColorFamily | "",
     weather_tag: "",
     status: "" as LaundryStatus | "",
+    condition: "" as ItemCondition | "",
+    wear_frequency: "" as WearFrequency | "",
+    fit_type: "" as FitType | "",
     sort_by: "id" as "id" | "name",
     sort_dir: "asc" as "asc" | "desc",
   });
@@ -81,7 +110,7 @@ export function WardrobePage() {
 
   useEffect(() => {
     void refreshItems();
-  }, [filters.category, filters.color_family, filters.weather_tag, filters.status, filters.sort_by, filters.sort_dir]);
+  }, [filters.category, filters.color_family, filters.weather_tag, filters.status, filters.condition, filters.wear_frequency, filters.fit_type, filters.sort_by, filters.sort_dir]);
 
   async function handleStatusUpdate(itemId: number, status: LaundryStatus) {
     setBusyItemIds((prev) => new Set(prev).add(itemId));
@@ -114,6 +143,12 @@ export function WardrobePage() {
       weather_tags_text: item.weather_tags.join(", "),
       status: item.status,
       style_tags_text: item.style_tags.join(", "),
+      size_label: item.size_label ?? "",
+      fit_type: item.fit_type,
+      material: item.material ?? "cotton",
+      wear_frequency: item.wear_frequency,
+      last_worn_at: item.last_worn_at ? item.last_worn_at.slice(0, 10) : "",
+      condition: item.condition,
     });
   }
 
@@ -139,6 +174,12 @@ export function WardrobePage() {
         weather_tags: splitTags(editDraft.weather_tags_text),
         status: statusValue,
         style_tags: splitTags(editDraft.style_tags_text),
+        size_label: editDraft.size_label.trim(),
+        fit_type: editDraft.fit_type,
+        material: editDraft.material,
+        wear_frequency: editDraft.wear_frequency,
+        last_worn_at: editDraft.last_worn_at || undefined,
+        condition: editDraft.condition,
         is_available: statusValue === "clean",
       });
       cancelEdit();
@@ -284,10 +325,7 @@ export function WardrobePage() {
           </label>
           <label className="field">
             Category
-            <select
-              value={form.category}
-              onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value as WardrobeCategory }))}
-            >
+            <select value={form.category} onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value as WardrobeCategory }))}>
               {categories.map((category) => (
                 <option key={category} value={category}>
                   {category}
@@ -297,10 +335,7 @@ export function WardrobePage() {
           </label>
           <label className="field">
             Formality
-            <select
-              value={form.formality}
-              onChange={(event) => setForm((prev) => ({ ...prev, formality: event.target.value as DresscodeLevel }))}
-            >
+            <select value={form.formality} onChange={(event) => setForm((prev) => ({ ...prev, formality: event.target.value as DresscodeLevel }))}>
               {dresscodes.map((dresscode) => (
                 <option key={dresscode} value={dresscode}>
                   {dresscode}
@@ -310,16 +345,65 @@ export function WardrobePage() {
           </label>
           <label className="field">
             Color family
-            <select
-              value={form.color_families[0]}
-              onChange={(event) => setForm((prev) => ({ ...prev, color_families: [event.target.value as ColorFamily] }))}
-            >
+            <select value={form.color_families[0]} onChange={(event) => setForm((prev) => ({ ...prev, color_families: [event.target.value as ColorFamily] }))}>
               {colors.map((color) => (
                 <option key={color} value={color}>
                   {color}
                 </option>
               ))}
             </select>
+          </label>
+          <label className="field">
+            Size
+            <input value={form.size_label ?? ""} onChange={(event) => setForm((prev) => ({ ...prev, size_label: event.target.value }))} />
+          </label>
+          <label className="field">
+            Fit type
+            <select value={form.fit_type} onChange={(event) => setForm((prev) => ({ ...prev, fit_type: event.target.value as FitType }))}>
+              {fitTypes.map((fitType) => (
+                <option key={fitType} value={fitType}>
+                  {fitType}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            Material
+            <select value={form.material ?? "cotton"} onChange={(event) => setForm((prev) => ({ ...prev, material: event.target.value as MaterialType }))}>
+              {materialTypes.map((materialType) => (
+                <option key={materialType} value={materialType}>
+                  {materialType}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            Wear frequency
+            <select value={form.wear_frequency} onChange={(event) => setForm((prev) => ({ ...prev, wear_frequency: event.target.value as WearFrequency }))}>
+              {wearFrequencies.map((wearFrequency) => (
+                <option key={wearFrequency} value={wearFrequency}>
+                  {wearFrequency}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            Condition
+            <select value={form.condition} onChange={(event) => setForm((prev) => ({ ...prev, condition: event.target.value as ItemCondition }))}>
+              {itemConditions.map((itemCondition) => (
+                <option key={itemCondition} value={itemCondition}>
+                  {itemCondition}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            Last worn
+            <input
+              type="date"
+              value={form.last_worn_at?.slice(0, 10) ?? ""}
+              onChange={(event) => setForm((prev) => ({ ...prev, last_worn_at: event.target.value || undefined }))}
+            />
           </label>
           <label className="field">
             Season notes
@@ -391,6 +475,39 @@ export function WardrobePage() {
               ))}
             </select>
           </label>
+          <label className="field inline wardrobeFilterField">
+            Condition
+            <select value={filters.condition} onChange={(event) => setFilters((prev) => ({ ...prev, condition: event.target.value as ItemCondition | "" }))}>
+              <option value="">all</option>
+              {itemConditions.map((itemCondition) => (
+                <option key={itemCondition} value={itemCondition}>
+                  {itemCondition}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field inline wardrobeFilterField">
+            Frequency
+            <select value={filters.wear_frequency} onChange={(event) => setFilters((prev) => ({ ...prev, wear_frequency: event.target.value as WearFrequency | "" }))}>
+              <option value="">all</option>
+              {wearFrequencies.map((wearFrequency) => (
+                <option key={wearFrequency} value={wearFrequency}>
+                  {wearFrequency}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field inline wardrobeFilterField">
+            Fit
+            <select value={filters.fit_type} onChange={(event) => setFilters((prev) => ({ ...prev, fit_type: event.target.value as FitType | "" }))}>
+              <option value="">all</option>
+              {fitTypes.map((fitType) => (
+                <option key={fitType} value={fitType}>
+                  {fitType}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="field inline wardrobeSortField">
             Sort by
             <select value={filters.sort_by} onChange={(event) => setFilters((prev) => ({ ...prev, sort_by: event.target.value as "id" | "name" }))}>
@@ -414,6 +531,9 @@ export function WardrobePage() {
                 color_family: "",
                 weather_tag: "",
                 status: "",
+                condition: "",
+                wear_frequency: "",
+                fit_type: "",
                 sort_by: "id",
                 sort_dir: "asc",
               })
@@ -450,19 +570,11 @@ export function WardrobePage() {
                   <>
                     <label className="field">
                       Name
-                      <input
-                        value={editDraft.name}
-                        onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
-                      />
+                      <input value={editDraft.name} onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, name: event.target.value } : prev))} />
                     </label>
                     <label className="field inline">
                       Category
-                      <select
-                        value={editDraft.category}
-                        onChange={(event) =>
-                          setEditDraft((prev) => (prev ? { ...prev, category: event.target.value as WardrobeCategory } : prev))
-                        }
-                      >
+                      <select value={editDraft.category} onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, category: event.target.value as WardrobeCategory } : prev))}>
                         {categories.map((category) => (
                           <option key={category} value={category}>
                             {category}
@@ -472,12 +584,7 @@ export function WardrobePage() {
                     </label>
                     <label className="field inline">
                       Formality
-                      <select
-                        value={editDraft.formality}
-                        onChange={(event) =>
-                          setEditDraft((prev) => (prev ? { ...prev, formality: event.target.value as DresscodeLevel } : prev))
-                        }
-                      >
+                      <select value={editDraft.formality} onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, formality: event.target.value as DresscodeLevel } : prev))}>
                         {dresscodes.map((dresscode) => (
                           <option key={dresscode} value={dresscode}>
                             {dresscode}
@@ -487,10 +594,7 @@ export function WardrobePage() {
                     </label>
                     <label className="field inline">
                       Color
-                      <select
-                        value={editDraft.color_family}
-                        onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, color_family: event.target.value as ColorFamily } : prev))}
-                      >
+                      <select value={editDraft.color_family} onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, color_family: event.target.value as ColorFamily } : prev))}>
                         {colors.map((color) => (
                           <option key={color} value={color}>
                             {color}
@@ -498,42 +602,69 @@ export function WardrobePage() {
                         ))}
                       </select>
                     </label>
+                    <label className="field inline">
+                      Size
+                      <input value={editDraft.size_label} onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, size_label: event.target.value } : prev))} />
+                    </label>
+                    <label className="field inline">
+                      Fit type
+                      <select value={editDraft.fit_type} onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, fit_type: event.target.value as FitType } : prev))}>
+                        {fitTypes.map((fitType) => (
+                          <option key={fitType} value={fitType}>
+                            {fitType}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field inline">
+                      Material
+                      <select value={editDraft.material} onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, material: event.target.value as MaterialType } : prev))}>
+                        {materialTypes.map((materialType) => (
+                          <option key={materialType} value={materialType}>
+                            {materialType}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field inline">
+                      Frequency
+                      <select value={editDraft.wear_frequency} onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, wear_frequency: event.target.value as WearFrequency } : prev))}>
+                        {wearFrequencies.map((wearFrequency) => (
+                          <option key={wearFrequency} value={wearFrequency}>
+                            {wearFrequency}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field inline">
+                      Condition
+                      <select value={editDraft.condition} onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, condition: event.target.value as ItemCondition } : prev))}>
+                        {itemConditions.map((itemCondition) => (
+                          <option key={itemCondition} value={itemCondition}>
+                            {itemCondition}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field">
+                      Last worn
+                      <input type="date" value={editDraft.last_worn_at} onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, last_worn_at: event.target.value } : prev))} />
+                    </label>
                     <label className="field">
                       Season tags
-                      <input
-                        placeholder="spring, autumn"
-                        value={editDraft.season_tags_text}
-                        onChange={(event) =>
-                          setEditDraft((prev) => (prev ? { ...prev, season_tags_text: event.target.value } : prev))
-                        }
-                      />
+                      <input placeholder="spring, autumn" value={editDraft.season_tags_text} onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, season_tags_text: event.target.value } : prev))} />
                     </label>
                     <label className="field">
                       Weather tags
-                      <input
-                        placeholder="cold, rain"
-                        value={editDraft.weather_tags_text}
-                        onChange={(event) =>
-                          setEditDraft((prev) => (prev ? { ...prev, weather_tags_text: event.target.value } : prev))
-                        }
-                      />
+                      <input placeholder="cold, rain" value={editDraft.weather_tags_text} onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, weather_tags_text: event.target.value } : prev))} />
                     </label>
                     <label className="field">
                       Style tags
-                      <input
-                        placeholder="classic, minimal"
-                        value={editDraft.style_tags_text}
-                        onChange={(event) =>
-                          setEditDraft((prev) => (prev ? { ...prev, style_tags_text: event.target.value } : prev))
-                        }
-                      />
+                      <input placeholder="classic, minimal" value={editDraft.style_tags_text} onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, style_tags_text: event.target.value } : prev))} />
                     </label>
                     <label className="field inline">
                       Laundry
-                      <select
-                        value={editDraft.status}
-                        onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, status: event.target.value as LaundryStatus } : prev))}
-                      >
+                      <select value={editDraft.status} onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, status: event.target.value as LaundryStatus } : prev))}>
                         {laundryStatuses.map((status) => (
                           <option key={status} value={status}>
                             {status}
@@ -546,22 +677,28 @@ export function WardrobePage() {
                   <>
                     <h3>{item.name}</h3>
                     <p>
-                      {item.category} · {item.formality}
+                      {item.category} · {item.formality} · {item.fit_type}
                     </p>
                     <p>Color: {item.color_families.join(", ")}</p>
+                    <p>Size: {item.size_label || "n/a"} · Material: {item.material ?? "n/a"}</p>
+                    <p>Condition: {item.condition} · Frequency: {item.wear_frequency}</p>
+                    <p>Last worn: {item.last_worn_at ? item.last_worn_at.slice(0, 10) : "not set"}</p>
                     <p>Weather: {item.weather_tags.join(", ") || "none"}</p>
                     <p>Laundry: {item.status}</p>
+                    {item.material_insights ? (
+                      <div className="metaNote wardrobeMaterialInsights">
+                        <p>Care: {item.material_insights.care}</p>
+                        <p>Weather fit: {item.material_insights.weather}</p>
+                        <p>Texture match: {item.material_insights.texture_match}</p>
+                      </div>
+                    ) : null}
                   </>
                 )}
               </div>
               <div className="actions wardrobeItemActions">
                 {editingItemId === item.id ? (
                   <>
-                    <button
-                      type="button"
-                      onClick={() => void handleSaveItemDetails(item.id)}
-                      disabled={busyItemIds.has(item.id) || !editDraft?.name.trim()}
-                    >
+                    <button type="button" onClick={() => void handleSaveItemDetails(item.id)} disabled={busyItemIds.has(item.id) || !editDraft?.name.trim()}>
                       Save changes
                     </button>
                     <button type="button" onClick={cancelEdit} disabled={busyItemIds.has(item.id)}>
@@ -572,11 +709,7 @@ export function WardrobePage() {
                   <>
                     <label className="field inline">
                       Status
-                      <select
-                        value={item.status}
-                        disabled={busyItemIds.has(item.id)}
-                        onChange={(event) => void handleStatusUpdate(item.id, event.target.value as LaundryStatus)}
-                      >
+                      <select value={item.status} disabled={busyItemIds.has(item.id)} onChange={(event) => void handleStatusUpdate(item.id, event.target.value as LaundryStatus)}>
                         {laundryStatuses.map((status) => (
                           <option key={status} value={status}>
                             {status}
@@ -584,11 +717,7 @@ export function WardrobePage() {
                         ))}
                       </select>
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => startEdit(item)}
-                      disabled={busyItemIds.has(item.id) || (editingItemId !== null && editingItemId !== item.id)}
-                    >
+                    <button type="button" onClick={() => startEdit(item)} disabled={busyItemIds.has(item.id) || (editingItemId !== null && editingItemId !== item.id)}>
                       Edit details
                     </button>
                   </>

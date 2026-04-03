@@ -8,9 +8,19 @@ from itertools import product
 from app.agents.constants import CATEGORY_SLOT_MAP
 from app.domain.entities import AgentEvaluationResult, OutfitCandidateDTO, RecommendationPipelineInput, WardrobeItemDTO
 from app.domain.enums import ItemStatus
+from app.services.gap_reasoning import GapReasoningService
 
 
 class WardrobeAgent:
+    _GAP_ARCHETYPES: tuple[dict[str, str], ...] = (
+        {"key": "blazer", "slot": "outer", "color": "schwarz"},
+        {"key": "coat", "slot": "outer", "color": "beige"},
+        {"key": "shirt", "slot": "top", "color": "weiss"},
+        {"key": "trousers", "slot": "bottom", "color": "dunkelblau"},
+        {"key": "sneakers", "slot": "shoes", "color": "weiss"},
+        {"key": "loafer", "slot": "shoes", "color": "schwarz"},
+    )
+
     @staticmethod
     def _trim_slot_lists(
         tops: list[WardrobeItemDTO],
@@ -209,45 +219,120 @@ class WardrobeAgent:
         bottoms = len(by_slot["bottom"])
         shoes = len(by_slot["shoes"])
         if not tops or not bottoms or not shoes:
-            return [{"suggestion": "Add missing core slot items (top, bottom, shoes).", "estimated_new_outfits": 0, "reason": "Core slots are required before meaningful combination growth."}]
+            return [
+                {
+                    "suggestion": "Add missing core slot items (top, bottom, shoes).",
+                    "target_item_archetype": "core_item",
+                    "suggested_color": "neutral",
+                    "upgrade_count": 0,
+                    "estimated_new_outfits": 0,
+                    "impacted_item_ids": [],
+                    "confidence": 0.2,
+                    "reason": "Core slots are required before meaningful combination growth.",
+                }
+            ]
 
         base_total = self._calculate_outfit_potential(items)
-        slot_counts = {
-            "top": tops,
-            "bottom": bottoms,
-            "shoes": shoes,
-            "outer": len(by_slot["outer"]),
-            "accessory": len(by_slot["accessory"]),
-        }
-        opportunities = {
-            "top": bottoms * shoes * max(1, slot_counts["outer"]) * max(1, slot_counts["accessory"]),
-            "bottom": tops * shoes * max(1, slot_counts["outer"]) * max(1, slot_counts["accessory"]),
-            "shoes": tops * bottoms * max(1, slot_counts["outer"]) * max(1, slot_counts["accessory"]),
-            "outer": tops * bottoms * shoes * max(1, slot_counts["accessory"]),
-            "accessory": tops * bottoms * shoes * max(1, slot_counts["outer"]),
-        }
-        slot_scores = {slot: opportunities[slot] / max(1, slot_counts[slot]) for slot in opportunities}
-        target_slot = min(slot_scores, key=slot_scores.get)
-
-        simulated = [*items, {"id": -1, "category": target_slot, "season_tags": [], "style_tags": [], "occasion_tags": [], "is_available": True}]
-        new_total = self._calculate_outfit_potential(simulated)
-        delta = max(0, new_total - base_total)
-
         palette = list((color_profile or {}).get("palette") or [])
-        palette_color = palette[0] if palette else "a palette-aligned tone"
+        palette_hint = str(palette[0]) if palette else None
+        archetypes = [a for a in self._GAP_ARCHETYPES if not self._has_archetype(items, a["key"])]
+        if not archetypes:
+            archetypes = [self._GAP_ARCHETYPES[0]]
 
-        sparse = sorted(
-            [{"item_id": i["id"], "degree": degree.get(i["id"], 0), "name": i.get("name", "item")} for i in items],
-            key=lambda x: x["degree"],
-        )[:3]
+        candidates: list[dict] = []
+        for idx, archetype in enumerate(archetypes):
+            virtual_item = self._virtual_item_for_gap(archetype=archetype, item_id=-(idx + 1), palette_hint=palette_hint)
+            impacted_ids = self._impacted_item_ids(items, virtual_item)
+            new_total = self._calculate_outfit_potential([*items, virtual_item])
+            delta = max(0, new_total - base_total)
+            slot_count = max(1, len(by_slot[archetype["slot"]]))
+            coverage_score = min(1.0, len(impacted_ids) / max(1, len(items)))
+            bottleneck_score = min(1.0, 1.0 / slot_count)
+            growth_score = min(1.0, delta / max(1, base_total))
+            confidence = round((coverage_score * 0.45) + (bottleneck_score * 0.35) + (growth_score * 0.2), 3)
+            candidates.append(
+                {
+                    "target_item_archetype": archetype["key"],
+                    "target_slot": archetype["slot"],
+                    "suggested_color": virtual_item.get("color_hint", archetype["color"]),
+                    "upgrade_count": len(impacted_ids),
+                    "estimated_new_outfits": delta,
+                    "impacted_item_ids": impacted_ids[:30],
+                    "confidence": confidence,
+                }
+            )
 
-        low_degree_in_slot = [s["name"] for s in sparse if any(it["id"] == s["item_id"] and CATEGORY_SLOT_MAP.get(it.get("category", ""), "other") == target_slot for it in items)]
-        weak_links = ", ".join(low_degree_in_slot[:2]) if low_degree_in_slot else ", ".join(s["name"] for s in sparse[:2])
-
+        candidates.sort(
+            key=lambda c: (
+                c["upgrade_count"],
+                c["estimated_new_outfits"],
+                c["confidence"],
+            ),
+            reverse=True,
+        )
+        top = candidates[0]
+        reason_payload = {
+            "target_item_archetype": top["target_item_archetype"],
+            "suggested_color": top["suggested_color"],
+            "upgrade_count": top["upgrade_count"],
+            "estimated_new_outfits": top["estimated_new_outfits"],
+            "confidence": top["confidence"],
+        }
+        reason = GapReasoningService().generate_gap_reason(reason_payload)
+        suggestion = (
+            f"Add one {top['target_item_archetype']} in {top['suggested_color']}"
+            if not reason.strip()
+            else reason
+        )
         return [
             {
-                "suggestion": f"Add one {target_slot} in {palette_color}",
-                "estimated_new_outfits": delta,
-                "reason": f"This slot currently bottlenecks combinations; adding one could unlock about {delta} additional outfits and improve connectivity for low-degree items like {weak_links}.",
+                "suggestion": suggestion,
+                "target_item_archetype": top["target_item_archetype"],
+                "suggested_color": top["suggested_color"],
+                "upgrade_count": top["upgrade_count"],
+                "estimated_new_outfits": top["estimated_new_outfits"],
+                "impacted_item_ids": top["impacted_item_ids"],
+                "confidence": top["confidence"],
+                "reason": reason or "Highest deterministic impact across your current wardrobe graph.",
             }
         ]
+
+    def _has_archetype(self, items: list[dict], archetype: str) -> bool:
+        tokens = {
+            "blazer": ("blazer",),
+            "coat": ("coat", "mantel"),
+            "shirt": ("shirt", "hemd"),
+            "trousers": ("trouser", "pants", "jeans", "hose"),
+            "sneakers": ("sneaker",),
+            "loafer": ("loafer",),
+        }
+        wanted = tokens.get(archetype, (archetype,))
+        for item in items:
+            text = f"{item.get('name', '')} {' '.join(item.get('style_tags', []))}".lower()
+            if any(token in text for token in wanted):
+                return True
+        return False
+
+    def _virtual_item_for_gap(self, archetype: dict[str, str], item_id: int, palette_hint: str | None = None) -> dict:
+        color_hint = archetype["color"]
+        if palette_hint and isinstance(palette_hint, str):
+            color_hint = palette_hint
+        return {
+            "id": item_id,
+            "name": f"{color_hint} {archetype['key']}",
+            "category": archetype["slot"],
+            "season_tags": [],
+            "style_tags": ["versatile", "classic"],
+            "occasion_tags": ["casual", "meeting", "event"],
+            "is_available": True,
+            "color_hint": color_hint,
+        }
+
+    def _impacted_item_ids(self, items: list[dict], virtual_item: dict) -> list[int]:
+        impacted: list[int] = []
+        for item in items:
+            if item.get("id") == virtual_item.get("id"):
+                continue
+            if self._compatibility(item, virtual_item) >= 0.45:
+                impacted.append(int(item["id"]))
+        return impacted

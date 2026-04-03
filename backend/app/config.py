@@ -58,6 +58,12 @@ class Settings(BaseSettings):
     hf_rmbg_model: str = "briaai/RMBG-1.4"
     hf_timeout_seconds: float = 20.0
     hf_max_retries: int = 2
+    calendar_events_json: str | None = None
+    google_calendar_access_token: str | None = None
+    google_calendar_ids: list[str] = ["primary"]
+    google_calendar_client_id: str | None = None
+    google_calendar_client_secret: str | None = None
+    google_calendar_refresh_token: str | None = None
 
 
 settings = Settings()

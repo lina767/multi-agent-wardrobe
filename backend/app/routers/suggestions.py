@@ -1,17 +1,28 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.api.schemas import ContextInput, RecommendationRequest
+from app.api.schemas import (
+    CalendarEventRead,
+    ContextInput,
+    PackingAssistantRequest,
+    PackingAssistantResponse,
+    ProactiveSuggestionRead,
+    ProactiveSuggestionsResponse,
+    RecommendationRequest,
+    SuggestionFeedbackUpdate,
+)
 from app.db.models import WardrobeItem
 from app.db.session import get_db
 from app.dependencies import get_current_user_id
 from app.domain.enums import ColorFamily
 from app.models.profile import OutfitLog, OutfitSuggestion, UserProfile
 from app.domain.enums import EventType, MoodEnergy
+from app.services.calendar_service import CalendarService
 from app.services.recommendation_service import build_recommendations
 from app.services.temporal_intelligence import get_current_temporal_state, record_style_signal
 from app.services.weather import WeatherService
@@ -55,6 +66,14 @@ def _occasion_to_event(occasion: str) -> EventType:
         "sport": EventType.ERRAND,
     }
     return mapping.get(occasion.lower(), EventType.OTHER)
+
+
+def _event_type_from_string(value: str) -> EventType:
+    normalized = value.strip().lower()
+    for enum_value in EventType:
+        if normalized == enum_value.value:
+            return enum_value
+    return EventType.OTHER
 
 
 @router.get("/suggestions")
@@ -206,7 +225,7 @@ def log_outfit(
 @router.post("/suggestions/{suggestion_id}/feedback")
 def suggestion_feedback(
     suggestion_id: int,
-    body: dict,
+    body: SuggestionFeedbackUpdate,
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ) -> dict:
@@ -217,22 +236,173 @@ def suggestion_feedback(
     )
     if not suggestion:
         raise HTTPException(status_code=404, detail="Suggestion not found")
-    suggestion.accepted = bool(body.get("accepted")) if body.get("accepted") is not None else suggestion.accepted
-    if body.get("rating") is not None:
-        suggestion.mood_score = max(0.0, min(1.0, float(body["rating"]) / 5.0))
+    accepted_value = body.accepted
+    if body.thumb == "up":
+        accepted_value = True
+    elif body.thumb == "down":
+        accepted_value = False
+    suggestion.accepted = accepted_value if accepted_value is not None else suggestion.accepted
+    if body.rating is not None:
+        suggestion.mood_score = max(0.0, min(1.0, float(body.rating) / 5.0))
+    weight_basis = body.rating if body.rating is not None else (5 if body.thumb == "up" else 2 if body.thumb == "down" else 3)
     record_style_signal(
         db,
         user_id=user_id,
         signal_type="suggestion_feedback",
         source="suggestions_api",
-        weight=max(0.2, float(body.get("rating", 3)) / 5.0),
+        weight=max(0.2, float(weight_basis) / 5.0),
         payload={
             "suggestion_id": suggestion_id,
-            "accepted": body.get("accepted"),
-            "rating": body.get("rating"),
+            "accepted": accepted_value,
+            "rating": body.rating,
+            "thumb": body.thumb,
+            "reason_tags": body.reason_tags,
+            "context": body.context or {},
             "item_ids": suggestion.item_ids,
-            "occasion": body.get("occasion"),
+            "occasion": body.occasion,
         },
     )
     db.commit()
     return {"status": "updated"}
+
+
+@router.get("/suggestions/proactive", response_model=ProactiveSuggestionsResponse)
+async def proactive_suggestions(
+    limit: int = Query(default=3, ge=1, le=7),
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+) -> ProactiveSuggestionsResponse:
+    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+    palette_bias = _palette_bias_from_profile(profile)
+    events = await CalendarService().list_upcoming_events(limit=limit)
+    entries: list[ProactiveSuggestionRead] = []
+    for event in events:
+        weather_data = await WeatherService().fetch_current(event.location) if event.location else {}
+        req = RecommendationRequest(
+            context=ContextInput(
+                condition=weather_data.get("condition"),
+                condition_raw=weather_data.get("condition_raw"),
+                temperature_c=weather_data.get("temperature_c"),
+                feels_like_c=weather_data.get("feels_like_c"),
+                rain_probability=weather_data.get("rain_probability"),
+                uv_index=weather_data.get("uv_index"),
+                wind_speed_kph=weather_data.get("wind_speed_kph"),
+                forecast_summary=weather_data.get("forecast_summary"),
+                event_type=_event_type_from_string(event.event_type),
+                mood=MoodEnergy.FOCUS,
+                notes=f"calendar_event={event.title}",
+            ),
+            palette_bias=palette_bias,
+            max_candidates_to_rank=80,
+            color_profile={
+                "season": profile.color_season if profile else None,
+                "undertone": profile.undertone if profile else None,
+                "contrast_level": profile.contrast_level if profile else None,
+                "palette": profile.color_palette if profile else None,
+            },
+        )
+        output = build_recommendations(db, user_id, req)
+        entries.append(
+            ProactiveSuggestionRead(
+                event=CalendarEventRead(
+                    title=event.title,
+                    starts_at=event.starts_at,
+                    location=event.location,
+                    event_type=event.event_type,
+                    source=event.source,
+                ),
+                suggestions=[
+                    {
+                        "item_ids": suggestion.item_ids,
+                        "item_names": suggestion.item_names,
+                        "total_score": suggestion.total_score,
+                        "explanation": suggestion.explanation,
+                    }
+                    for suggestion in output.suggestions[:2]
+                ],
+            )
+        )
+    return ProactiveSuggestionsResponse(generated_at=datetime.now(UTC), entries=entries)
+
+
+@router.post("/suggestions/packing-plan", response_model=PackingAssistantResponse)
+async def packing_plan(
+    body: PackingAssistantRequest,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+) -> PackingAssistantResponse:
+    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+    palette_bias = _palette_bias_from_profile(profile)
+    occasions = body.planned_occasions or ["casual"] * body.duration_days
+    if len(occasions) < body.duration_days:
+        occasions = occasions + [occasions[-1] if occasions else "casual"] * (body.duration_days - len(occasions))
+    occasions = occasions[: body.duration_days]
+    per_day_outfits: list[dict] = []
+    item_frequency: dict[int, int] = {}
+    item_names: dict[int, str] = {}
+    for day_index, occasion in enumerate(occasions, start=1):
+        weather_data = await WeatherService().fetch_current(body.location) if body.location else {}
+        req = RecommendationRequest(
+            context=ContextInput(
+                condition=weather_data.get("condition"),
+                condition_raw=weather_data.get("condition_raw"),
+                temperature_c=weather_data.get("temperature_c"),
+                feels_like_c=weather_data.get("feels_like_c"),
+                rain_probability=weather_data.get("rain_probability"),
+                uv_index=weather_data.get("uv_index"),
+                wind_speed_kph=weather_data.get("wind_speed_kph"),
+                forecast_summary=weather_data.get("forecast_summary"),
+                event_type=_occasion_to_event(occasion),
+                mood=MoodEnergy.FOCUS,
+                notes=f"packing_day={day_index}",
+            ),
+            palette_bias=palette_bias,
+            max_candidates_to_rank=100,
+        )
+        output = build_recommendations(db, user_id, req)
+        top = output.suggestions[0] if output.suggestions else None
+        if not top:
+            continue
+        for item_id, item_name in zip(top.item_ids, top.item_names):
+            item_frequency[item_id] = item_frequency.get(item_id, 0) + 1
+            item_names[item_id] = item_name
+        per_day_outfits.append(
+            {
+                "day": day_index,
+                "occasion": occasion,
+                "item_ids": top.item_ids,
+                "item_names": top.item_names,
+                "score": top.total_score,
+            }
+        )
+    ranked_items = sorted(item_frequency, key=lambda item_id: (-item_frequency[item_id], item_id))
+    packed_ids = ranked_items[: body.max_items]
+    packed_set = set(packed_ids)
+    filtered_plan = []
+    for outfit in per_day_outfits:
+        filtered_ids = [item_id for item_id in outfit["item_ids"] if item_id in packed_set]
+        filtered_names = [item_names[item_id] for item_id in filtered_ids if item_id in item_names]
+        if not filtered_ids:
+            continue
+        filtered_plan.append(
+            {
+                "day": outfit["day"],
+                "occasion": outfit["occasion"],
+                "item_ids": filtered_ids,
+                "item_names": filtered_names,
+                "score": outfit["score"],
+            }
+        )
+    coverage = round(len(filtered_plan) / max(1, body.duration_days), 3)
+    return PackingAssistantResponse(
+        summary={
+            "duration_days": body.duration_days,
+            "planned_occasions": occasions,
+            "coverage_ratio": coverage,
+            "selected_item_count": len(packed_ids),
+            "laundry_frequency_days": body.laundry_frequency_days,
+        },
+        packing_item_ids=packed_ids,
+        packing_item_names=[item_names[item_id] for item_id in packed_ids if item_id in item_names],
+        outfit_plan=filtered_plan,
+    )

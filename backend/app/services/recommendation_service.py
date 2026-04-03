@@ -27,6 +27,7 @@ from app.domain.entities import OutfitCandidateDTO, RecommendationPipelineInput,
 from app.domain.enums import ColorFamily, DresscodeLevel, ItemStatus, WardrobeCategory
 from app.evidence.rules import EvidenceRuleEngine
 from app.db.models import FeedbackEvent, OutfitLog, User, WardrobeItem
+from app.models.profile import StyleSignalEvent
 from app.services.temporal_intelligence import get_current_temporal_state
 from app.services.vector_retrieval import VectorRetriever
 
@@ -133,6 +134,39 @@ def _history_snapshot(db: Session, user_id: int, limit: int = 30) -> tuple[list[
     return tags, history
 
 
+def _combo_preference_adjustments(db: Session, user_id: int, limit: int = 120) -> dict[tuple[int, ...], float]:
+    rows = (
+        db.query(StyleSignalEvent)
+        .filter(StyleSignalEvent.user_id == user_id, StyleSignalEvent.signal_type == "suggestion_feedback")
+        .order_by(StyleSignalEvent.occurred_at.desc())
+        .limit(limit)
+        .all()
+    )
+    cumulative: dict[tuple[int, ...], float] = {}
+    counts: dict[tuple[int, ...], int] = {}
+    for row in rows:
+        payload = row.payload_json or {}
+        item_ids = payload.get("item_ids")
+        if not isinstance(item_ids, list):
+            continue
+        key = tuple(sorted(int(item_id) for item_id in item_ids))
+        if not key:
+            continue
+        thumb = payload.get("thumb")
+        rating = payload.get("rating")
+        if thumb == "up":
+            signal = 0.08
+        elif thumb == "down":
+            signal = -0.08
+        elif isinstance(rating, int):
+            signal = ((rating - 3) / 2) * 0.05
+        else:
+            signal = 0.0
+        cumulative[key] = cumulative.get(key, 0.0) + signal
+        counts[key] = counts.get(key, 0) + 1
+    return {key: max(-0.12, min(0.12, total / max(1, counts[key]))) for key, total in cumulative.items()}
+
+
 def _build_retrieval_query(body: RecommendationRequest, style_prefs: UserStylePreferences) -> str:
     tags = " ".join(style_prefs.preferred_style_tags[:8])
     avoid = " ".join(style_prefs.avoid_style_tags[:5])
@@ -181,6 +215,7 @@ def build_recommendations(
 
     style_prefs = body.style_preferences or UserStylePreferences()
     hist_tags, outfit_history = _history_snapshot(db, user_id)
+    combo_adjustments = _combo_preference_adjustments(db, user_id)
 
     pipeline_base = RecommendationPipelineInput(
         context=body.context,
@@ -313,7 +348,18 @@ def build_recommendations(
             )
 
         candidate_key = "-".join(str(i) for i in sorted(cand.item_ids))
-        scored.append((final_score, cand, agent_contribs, trace, ev_tags, reasons, candidate_key))
+        combo_key = tuple(sorted(cand.item_ids))
+        preference_delta = combo_adjustments.get(combo_key, 0.0)
+        final_with_preference = max(0.0, min(1.0, final_score + preference_delta))
+        if preference_delta != 0.0:
+            trace.append(
+                {
+                    "type": "preference_feedback_loop",
+                    "delta": round(preference_delta, 4),
+                    "source": "thumbs_history",
+                }
+            )
+        scored.append((final_with_preference, cand, agent_contribs, trace, ev_tags, reasons, candidate_key))
         supervisor_candidates.append(
             {
                 "candidate_key": candidate_key,

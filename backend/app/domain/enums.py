@@ -45,3 +45,32 @@ class ItemStatus(str, Enum):
     CLEAN = "clean"
     DIRTY = "dirty"
     DRY_CLEANING = "dry_cleaning"
+
+
+class FitType(str, Enum):
+    OVERSIZED = "oversized"
+    REGULAR = "regular"
+    SLIM = "slim"
+    CROPPED = "cropped"
+
+
+class WearFrequency(str, Enum):
+    RARELY = "rarely"
+    SOMETIMES = "sometimes"
+    OFTEN = "often"
+    VERY_OFTEN = "very_often"
+
+
+class ItemCondition(str, Enum):
+    NEW = "new"
+    GOOD = "good"
+    WORN = "worn"
+    NEEDS_REPAIR = "needs_repair"
+
+
+class MaterialType(str, Enum):
+    COTTON = "cotton"
+    SILK = "silk"
+    WOOL = "wool"
+    SYNTHETIC = "synthetic"
+    LINEN = "linen"
