@@ -68,6 +68,9 @@ def _upload_supabase(item_id: int, payload: bytes, ext: str, folder: str) -> str
         "x-upsert": "true",
     }
     resp = httpx.post(url, headers=headers, content=payload, timeout=20.0)
+    if resp.status_code == 404 and "Bucket not found" in resp.text:
+        _ensure_supabase_bucket()
+        resp = httpx.post(url, headers=headers, content=payload, timeout=20.0)
     if resp.status_code >= 300:
         raise RuntimeError(f"Supabase upload failed ({resp.status_code}): {resp.text}")
     return f"supabase:{key}"
@@ -86,3 +89,25 @@ def _delete_supabase(key: str) -> None:
         httpx.delete(url, headers=headers, timeout=10.0)
     except httpx.HTTPError:
         pass
+
+
+def _ensure_supabase_bucket() -> None:
+    if not settings.supabase_url or not settings.supabase_service_key:
+        return
+    base = settings.supabase_url.rstrip("/")
+    headers = {
+        "apikey": settings.supabase_service_key,
+        "Authorization": f"Bearer {settings.supabase_service_key}",
+        "Content-Type": "application/json",
+    }
+    # Idempotent best-effort create. If it already exists, Supabase returns 409.
+    payload = {
+        "id": settings.supabase_bucket,
+        "name": settings.supabase_bucket,
+        "public": True,
+    }
+    try:
+        httpx.post(f"{base}/storage/v1/bucket", headers=headers, json=payload, timeout=10.0)
+    except httpx.HTTPError:
+        # Preserve original upload error path if bucket creation call fails.
+        return
