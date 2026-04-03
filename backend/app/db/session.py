@@ -6,17 +6,28 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
 
-# Ensure SQLite directory exists
-if settings.database_url.startswith("sqlite"):
-    path_part = settings.database_url.replace("sqlite:///", "", 1)
+def _normalize_database_url(raw_url: str) -> str:
+    if not raw_url.startswith("sqlite"):
+        return raw_url
+    prefix = "sqlite:///"
+    if not raw_url.startswith(prefix):
+        return raw_url
+    path_part = raw_url.replace(prefix, "", 1)
     db_path = Path(path_part)
-    if db_path.parent != Path("."):
-        db_path.parent.mkdir(parents=True, exist_ok=True)
+    if not db_path.is_absolute():
+        # Resolve relative sqlite paths against backend root to avoid cwd-dependent db splits.
+        backend_root = Path(__file__).resolve().parents[2]
+        db_path = (backend_root / db_path).resolve()
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    return f"{prefix}{db_path}"
 
-connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
+
+DATABASE_URL = _normalize_database_url(settings.database_url)
+
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
 engine = create_engine(
-    settings.database_url,
+    DATABASE_URL,
     connect_args=connect_args,
     echo=False,
 )

@@ -87,6 +87,10 @@ class VisionPipeline:
             return
         await self._queue.put(VisionJob(item_id=item_id, image_bytes=image_bytes, extension=extension))
 
+    async def predict_tags(self, image_bytes: bytes, extension: str) -> VisionTags:
+        """Public helper for synchronous tag prefill at upload time."""
+        return await self._predict_tags(image_bytes, extension)
+
     async def _worker_loop(self) -> None:
         while True:
             job = await self._queue.get()

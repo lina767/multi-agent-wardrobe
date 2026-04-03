@@ -96,6 +96,25 @@ def _parse_material(material: str | None) -> MaterialType | None:
         return None
 
 
+def _infer_formality(
+    style_tags: list[str],
+    category: str,
+    fallback: str,
+) -> str:
+    tags = {t.strip().lower() for t in style_tags if t and t.strip()}
+    if "business" in tags:
+        return DresscodeLevel.BUSINESS.value
+    if "formal" in tags:
+        return DresscodeLevel.FORMAL.value
+    if "sporty" in tags:
+        return DresscodeLevel.SPORT.value
+    if "classic" in tags or "minimalist" in tags:
+        return DresscodeLevel.SMART_CASUAL.value
+    if category == WardrobeCategory.SHOES.value and {"sporty", "streetwear"} & tags:
+        return DresscodeLevel.SPORT.value
+    return fallback
+
+
 @router.get("/items", response_model=list[WardrobeItemRead])
 def list_items(
     category: str | None = Query(default=None),
@@ -295,25 +314,46 @@ async def bulk_upload_items(
         if not display_name:
             display_name = "Imported Item"
 
+        payload = await image.read()
+        payload, ext = _normalize_upload_payload(payload, ext)
+        detected_category = parsed_category
+        detected_colors = [parsed_color]
+        detected_styles: list[str] = []
+        detected_material: str | None = None
+        detected_dominant_colors: list[dict] = []
+        try:
+            detected = await vision_pipeline.predict_tags(payload, ext)
+            if detected.category:
+                detected_category = detected.category
+            if detected.color_families:
+                detected_colors = detected.color_families
+            if detected.style_tags:
+                detected_styles = detected.style_tags
+            if detected.material:
+                detected_material = detected.material
+            if detected.dominant_colors:
+                detected_dominant_colors = detected.dominant_colors
+        except Exception:
+            # Keep upload resilient: fallback to form defaults when detection fails.
+            pass
+
         row = WardrobeItem(
             user_id=uid,
             name=display_name,
-            category=parsed_category,
-            color_families_json=[parsed_color],
-            dominant_colors_json=[],
-            formality=parsed_formality,
+            category=detected_category,
+            color_families_json=detected_colors,
+            dominant_colors_json=detected_dominant_colors,
+            formality=_infer_formality(detected_styles, detected_category, parsed_formality),
             season_tags_json=[],
             weather_tags_json=[],
             is_available=True,
             status=ItemStatus.CLEAN.value,
-            style_tags_json=[],
+            style_tags_json=detected_styles,
+            material=detected_material,
             quantity=1,
         )
         db.add(row)
         db.flush()
-
-        payload = await image.read()
-        payload, ext = _normalize_upload_payload(payload, ext)
         try:
             image_ref = upload_image(row.id, payload, ext)
         except RuntimeError as exc:

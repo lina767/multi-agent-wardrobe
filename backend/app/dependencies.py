@@ -104,12 +104,12 @@ def _upsert_user_from_claims(db: Session, claims: dict[str, Any]) -> User:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token missing subject")
 
     user = db.query(User).filter(User.supabase_user_id == sub).first()
-    if not user and email:
-        user = db.query(User).filter(User.email == email).first()
     if user:
         user.supabase_user_id = sub
         if email:
-            user.email = email
+            email_owner = db.query(User).filter(User.email == email).first()
+            if email_owner is None or email_owner.id == user.id:
+                user.email = email
         user.last_login_at = datetime.now(UTC)
         user.is_active = True
         db.commit()
@@ -122,12 +122,21 @@ def _upsert_user_from_claims(db: Session, claims: dict[str, Any]) -> User:
     while db.query(User).filter(User.username == candidate).first():
         suffix += 1
         candidate = f"{username_seed}_{suffix}"
+    # Security hardening: never attach by email, only by Supabase subject.
+    # If email already belongs to a different account, keep this field empty instead
+    # of merging identities across users.
+    safe_email: str | None = None
+    if email:
+        email_owner = db.query(User).filter(User.email == email).first()
+        if email_owner is None:
+            safe_email = email
+
     user = User(
         username=candidate,
         display_name=email.split("@")[0] if email and "@" in email else "Wardrobe User",
         preferences_json={},
         supabase_user_id=sub,
-        email=email or None,
+        email=safe_email,
         is_active=True,
         last_login_at=datetime.now(UTC),
     )

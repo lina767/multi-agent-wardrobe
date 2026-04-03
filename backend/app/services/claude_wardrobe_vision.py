@@ -127,7 +127,8 @@ async def predict_wardrobe_tags_anthropic(image_bytes: bytes, extension: str) ->
         "Focus on the main garment. Be decisive."
     )
     body = {
-        "model": settings.agent_color_model,
+        # For wardrobe tagging fallback prefer the lightweight reasoning model (typically Haiku).
+        "model": settings.agent_reasoning_model,
         "max_tokens": 400,
         "messages": [
             {
