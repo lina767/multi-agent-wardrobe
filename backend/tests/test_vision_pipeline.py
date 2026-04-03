@@ -20,6 +20,7 @@ def test_hf_label_mapping_to_domain_values() -> None:
     assert _map_color_families(["black", "blue"]) == ["neutral", "cool"]
     assert _map_style_tags(["casual", "avant-garde"]) == ["casual"]
     assert _map_material("wool") == "wool"
+    assert _map_material("denim") == "jeans"
     assert _map_material("suede") is None
 
 

@@ -19,6 +19,7 @@ class ColorFamily(str, Enum):
 
 
 class DresscodeLevel(str, Enum):
+    SPORT = "sport"
     CASUAL = "casual"
     SMART_CASUAL = "smart_casual"
     BUSINESS = "business"
@@ -74,3 +75,4 @@ class MaterialType(str, Enum):
     WOOL = "wool"
     SYNTHETIC = "synthetic"
     LINEN = "linen"
+    JEANS = "jeans"

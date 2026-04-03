@@ -212,8 +212,11 @@ def _map_style_tags(labels: list[str]) -> list[str]:
 def _map_material(label: str | None) -> str | None:
     if not label:
         return None
-    allowed = {"leather", "wool", "cotton", "denim", "linen", "silk", "polyester", "knit"}
-    return label if label in allowed else None
+    normalized = str(label).strip().lower()
+    if normalized == "denim":
+        normalized = "jeans"
+    allowed = {"leather", "wool", "cotton", "jeans", "linen", "silk", "polyester", "knit"}
+    return normalized if normalized in allowed else None
 
 
 def _extract_dominant_colors(image_bytes: bytes, max_colors: int = 3) -> list[dict[str, Any]]:

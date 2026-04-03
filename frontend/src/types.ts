@@ -1,9 +1,9 @@
 export type WardrobeCategory = "top" | "bottom" | "outer" | "shoes" | "accessory";
-export type DresscodeLevel = "casual" | "smart_casual" | "business" | "formal";
+export type DresscodeLevel = "sport" | "casual" | "smart_casual" | "business" | "formal";
 export type ColorFamily = "neutral" | "warm" | "cool" | "bold" | "earth" | "pastel";
 export type LaundryStatus = "clean" | "dirty" | "dry_cleaning";
 export type FitType = "oversized" | "regular" | "slim" | "cropped";
-export type MaterialType = "cotton" | "silk" | "wool" | "synthetic" | "linen";
+export type MaterialType = "cotton" | "silk" | "wool" | "synthetic" | "linen" | "jeans";
 export type WearFrequency = "rarely" | "sometimes" | "often" | "very_often";
 export type ItemCondition = "new" | "good" | "worn" | "needs_repair";
 

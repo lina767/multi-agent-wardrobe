@@ -123,7 +123,7 @@ async def predict_wardrobe_tags_anthropic(image_bytes: bytes, extension: str) ->
         "(wardrobe color groups, not raw color names)\n"
         "- dominant_hex: optional string like #A1B2C3 for the main visible garment color\n"
         "- style_tags: 0-3 from casual, formal, business, minimalist, sporty, streetwear, classic\n"
-        "- material: one of leather, wool, cotton, denim, linen, silk, polyester, knit or null\n"
+        "- material: one of leather, wool, cotton, jeans, linen, silk, polyester, knit or null (use jeans for denim)\n"
         "Focus on the main garment. Be decisive."
     )
     body = {

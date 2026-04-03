@@ -171,6 +171,7 @@ class EvidenceRuleEngine:
 
 def _formality_rank(f: DresscodeLevel) -> int:
     order = [
+        DresscodeLevel.SPORT,
         DresscodeLevel.CASUAL,
         DresscodeLevel.SMART_CASUAL,
         DresscodeLevel.BUSINESS,

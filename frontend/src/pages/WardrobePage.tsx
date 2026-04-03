@@ -15,12 +15,12 @@ import type {
 } from "../types";
 
 const categories: WardrobeCategory[] = ["top", "bottom", "outer", "shoes", "accessory"];
-const dresscodes: DresscodeLevel[] = ["casual", "smart_casual", "business", "formal"];
+const dresscodes: DresscodeLevel[] = ["sport", "casual", "smart_casual", "business", "formal"];
 const colors: ColorFamily[] = ["neutral", "warm", "cool", "bold", "earth", "pastel"];
 const weatherTags = ["cold", "mild", "hot", "rain", "wind", "snow"];
 const laundryStatuses: LaundryStatus[] = ["clean", "dirty", "dry_cleaning"];
 const fitTypes: FitType[] = ["oversized", "regular", "slim", "cropped"];
-const materialTypes: MaterialType[] = ["cotton", "silk", "wool", "synthetic", "linen"];
+const materialTypes: MaterialType[] = ["cotton", "silk", "wool", "synthetic", "linen", "jeans"];
 const wearFrequencies: WearFrequency[] = ["rarely", "sometimes", "often", "very_often"];
 const itemConditions: ItemCondition[] = ["new", "good", "worn", "needs_repair"];
 

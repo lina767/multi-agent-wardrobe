@@ -44,6 +44,11 @@ _MATERIAL_INSIGHTS: dict[str, dict[str, str]] = {
         "weather": "Cool and airy, ideal for warm weather.",
         "texture_match": "Great with cotton and lightweight textured layers.",
     },
+    MaterialType.JEANS.value: {
+        "care": "Wash inside-out on gentle cycle; air dry when possible to keep dye and stretch.",
+        "weather": "Sturdy for daily wear; heavier weights suit cooler days.",
+        "texture_match": "Pairs with knits, leather, and casual cotton layers.",
+    },
 }
 
 try:
