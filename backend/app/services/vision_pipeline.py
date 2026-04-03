@@ -7,7 +7,13 @@ from dataclasses import dataclass
 from app.config import settings
 from app.db import session as db_session
 from app.db.models import WardrobeItem
-from app.services.hf_vision_service import HuggingFaceVisionService
+from app.services.claude_wardrobe_vision import predict_wardrobe_tags_anthropic
+from app.services.hf_vision_service import (
+    HuggingFaceVisionService,
+    VisionTags,
+    _extract_dominant_colors,
+    _infer_color_families_from_dominant,
+)
 from app.storage import upload_image
 
 logger = logging.getLogger(__name__)
@@ -26,6 +32,41 @@ class VisionPipeline:
         self._worker_task: asyncio.Task[None] | None = None
         self._stopping = asyncio.Event()
         self._service = HuggingFaceVisionService()
+
+    async def _predict_tags(self, image_bytes: bytes, extension: str) -> VisionTags:
+        if self._service.is_configured():
+            try:
+                return await self._service.predict_tags(image_bytes)
+            except Exception as exc:
+                logger.warning(
+                    "hf_vision_tags_failed",
+                    extra={"error": str(exc)},
+                )
+                if settings.anthropic_api_key:
+                    return await predict_wardrobe_tags_anthropic(image_bytes, extension)
+                raise
+
+        if settings.anthropic_api_key:
+            return await predict_wardrobe_tags_anthropic(image_bytes, extension)
+
+        dominant = _extract_dominant_colors(image_bytes)
+        families = _infer_color_families_from_dominant(dominant)
+        return VisionTags(
+            category=None,
+            color_families=families,
+            dominant_colors=dominant,
+            style_tags=[],
+            material=None,
+        )
+
+    async def _remove_background(self, image_bytes: bytes) -> bytes:
+        if not self._service.is_configured():
+            return image_bytes
+        try:
+            return await self._service.remove_background(image_bytes)
+        except Exception as exc:
+            logger.warning("hf_background_removal_failed", extra={"error": str(exc)})
+            return image_bytes
 
     async def start(self) -> None:
         if not settings.vision_enabled or self._worker_task:
@@ -69,8 +110,8 @@ class VisionPipeline:
         row.vision_error = None
         db.commit()
         try:
-            tags = await self._service.predict_tags(job.image_bytes)
-            segmented = await self._service.remove_background(job.image_bytes)
+            tags = await self._predict_tags(job.image_bytes, job.extension)
+            segmented = await self._remove_background(job.image_bytes)
             processed_ref = upload_image(job.item_id, segmented, job.extension, folder="processed")
 
             row = db.query(WardrobeItem).filter(WardrobeItem.id == job.item_id).first()

@@ -1,4 +1,5 @@
 import io
+from unittest.mock import AsyncMock, patch
 
 from app.db import session as session_module
 from app.db.models import WardrobeItem
@@ -79,7 +80,13 @@ def test_worker_marks_done_and_updates_fields(monkeypatch) -> None:
 
     class _StubService:
         async def predict_tags(self, image_bytes: bytes) -> VisionTags:
-            return VisionTags(category="outer", color_families=["earth"], style_tags=["classic"], material="wool")
+            return VisionTags(
+                category="outer",
+                color_families=["earth"],
+                dominant_colors=[],
+                style_tags=["classic"],
+                material="wool",
+            )
 
         async def remove_background(self, image_bytes: bytes) -> bytes:
             return b"png"
@@ -100,4 +107,65 @@ def test_worker_marks_done_and_updates_fields(monkeypatch) -> None:
     assert updated.style_tags_json == ["classic"]
     assert updated.material == "wool"
     assert updated.processed_image_path is not None
+    db.close()
+
+
+def test_predict_tags_falls_back_to_claude_when_hf_fails(monkeypatch) -> None:
+    db = session_module.SessionLocal()
+    row = WardrobeItem(
+        user_id=1,
+        name="Fallback Tee",
+        category="top",
+        color_families_json=["neutral"],
+        formality="casual",
+        season_tags_json=[],
+        weather_tags_json=[],
+        is_available=True,
+        status="clean",
+        style_tags_json=[],
+        image_path="uploads/raw.png",
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    db.close()
+
+    class _FailingHf:
+        def is_configured(self) -> bool:
+            return True
+
+        async def predict_tags(self, image_bytes: bytes) -> VisionTags:
+            raise RuntimeError("HF down")
+
+        async def remove_background(self, image_bytes: bytes) -> bytes:
+            return b"png"
+
+    fallback_tags = VisionTags(
+        category="bottom",
+        color_families=["cool"],
+        dominant_colors=[],
+        style_tags=["casual"],
+        material="cotton",
+    )
+
+    monkeypatch.setattr(vision_pipeline_module.settings, "anthropic_api_key", "test-key")
+    monkeypatch.setattr(vision_pipeline_module.vision_pipeline, "_service", _FailingHf())
+    monkeypatch.setattr(
+        vision_pipeline_module,
+        "predict_wardrobe_tags_anthropic",
+        AsyncMock(return_value=fallback_tags),
+    )
+
+    job = vision_pipeline_module.VisionJob(item_id=row.id, image_bytes=b"raw", extension="png")
+    import asyncio
+
+    asyncio.run(vision_pipeline_module.vision_pipeline._process_job(job))
+
+    db = session_module.SessionLocal()
+    updated = db.query(WardrobeItem).filter(WardrobeItem.id == row.id).first()
+    assert updated is not None
+    assert updated.vision_status == "done"
+    assert updated.category == "bottom"
+    assert updated.color_families_json == ["cool"]
+    assert updated.material == "cotton"
     db.close()
