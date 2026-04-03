@@ -25,7 +25,25 @@ import type {
 
 const RUNTIME_API_BASE = (window as Window & { __API_BASE__?: string }).__API_BASE__;
 const ENV_API_BASE = import.meta.env.VITE_API_BASE_URL as string | undefined;
-const API_BASE = (ENV_API_BASE ?? RUNTIME_API_BASE ?? "").replace(/\/$/, "");
+
+function normalizeApiBase(rawBase: string | undefined): string {
+  const trimmed = (rawBase ?? "").trim();
+  if (!trimmed) {
+    return "";
+  }
+  // Accept absolute URLs as-is.
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed.replace(/\/$/, "");
+  }
+  // Common deployment mistake: host provided without protocol.
+  if (/^[a-z0-9.-]+(?::\d+)?(?:\/.*)?$/i.test(trimmed)) {
+    return `https://${trimmed}`.replace(/\/$/, "");
+  }
+  // Allow relative prefixes when explicitly configured that way.
+  return trimmed.replace(/\/$/, "");
+}
+
+const API_BASE = normalizeApiBase(ENV_API_BASE ?? RUNTIME_API_BASE);
 const API_PREFIX = `${API_BASE}/api/v1`;
 let apiAccessToken: string | null = null;
 
