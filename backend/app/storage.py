@@ -69,10 +69,18 @@ def _upload_supabase(item_id: int, payload: bytes, ext: str, folder: str) -> str
     }
     resp = httpx.post(url, headers=headers, content=payload, timeout=20.0)
     if resp.status_code == 404 and "Bucket not found" in resp.text:
-        _ensure_supabase_bucket()
+        created, create_detail = _ensure_supabase_bucket()
+        if not created:
+            raise RuntimeError(
+                "Supabase bucket bootstrap failed "
+                f"(bucket='{settings.supabase_bucket}', base='{base}'): {create_detail}"
+            )
         resp = httpx.post(url, headers=headers, content=payload, timeout=20.0)
     if resp.status_code >= 300:
-        raise RuntimeError(f"Supabase upload failed ({resp.status_code}): {resp.text}")
+        raise RuntimeError(
+            f"Supabase upload failed ({resp.status_code}) "
+            f"(bucket='{settings.supabase_bucket}', base='{base}'): {resp.text}"
+        )
     return f"supabase:{key}"
 
 
@@ -91,23 +99,25 @@ def _delete_supabase(key: str) -> None:
         pass
 
 
-def _ensure_supabase_bucket() -> None:
+def _ensure_supabase_bucket() -> tuple[bool, str]:
     if not settings.supabase_url or not settings.supabase_service_key:
-        return
+        return False, "missing supabase_url or supabase_service_key"
     base = settings.supabase_url.rstrip("/")
     headers = {
         "apikey": settings.supabase_service_key,
         "Authorization": f"Bearer {settings.supabase_service_key}",
         "Content-Type": "application/json",
     }
-    # Idempotent best-effort create. If it already exists, Supabase returns 409.
+    # Idempotent create. If it already exists, Supabase returns 409.
     payload = {
         "id": settings.supabase_bucket,
         "name": settings.supabase_bucket,
         "public": True,
     }
     try:
-        httpx.post(f"{base}/storage/v1/bucket", headers=headers, json=payload, timeout=10.0)
+        resp = httpx.post(f"{base}/storage/v1/bucket", headers=headers, json=payload, timeout=10.0)
     except httpx.HTTPError:
-        # Preserve original upload error path if bucket creation call fails.
-        return
+        return False, "network error while creating bucket"
+    if resp.status_code in {200, 201, 409}:
+        return True, "ok"
+    return False, f"create bucket failed ({resp.status_code}): {resp.text}"
